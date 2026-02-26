@@ -1,0 +1,14 @@
+package com.bitiriciler32.cms.media.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class UploadUrlResponse {
+    private String objectKey;
+    private String uploadUrl;
+    private Long expiresInSeconds;
+}

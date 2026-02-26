@@ -1,0 +1,58 @@
+# ── Central Management Subsystem Configuration ──
+
+spring:
+  application:
+    name: cms
+
+  # ── PostgreSQL ──
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cms_db
+    username: postgres
+    password: admin
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # ── Jackson ──
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8050
+
+# ── JWT ──
+jwt:
+  secret: ${JWT_SECRET:dGhpcyBpcyBhIGRldi1vbmx5IHNlY3JldCBrZXkgdGhhdCBtdXN0IGJlIGNoYW5nZWQ=}
+  expiration-ms: 86400000        # 24 hours
+  subsystem-expiration-ms: 86400000
+
+# ── MinIO ──
+minio:
+  endpoint: http://localhost:9000
+  access-key: minio
+  secret-key: admin123
+  bucket-name: anomaly-clips
+  presign-expiry-seconds: 300    # 5 minutes
+
+# ── Firebase ──
+firebase:
+  credentials-path: firebase-service-account.json
+
+# ── Subsystem Credentials ──
+subsystem:
+  id: ${SUBSYSTEM_ID:ai-inference-node}
+  secret: ${SUBSYSTEM_SECRET:dev-only-subsystem-secret-change-in-prod}
+
+# ── Logging ──
+logging:
+  level:
+    com.bitiriciler32.cms: DEBUG
+    org.springframework.security: INFO
