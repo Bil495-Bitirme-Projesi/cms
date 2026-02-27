@@ -51,6 +51,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Herkese açık: login endpoint'leri
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Dev-only test endpoints (only active with "dev" profile)
+                        .requestMatchers("/api/dev/**").permitAll()
                         // Subsystem endpoint'leri: SubsystemJwtFilter doğrular, burada authenticated yeterli
                         .requestMatchers(HttpMethod.POST, "/api/events/ingest").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/clips/upload-url").authenticated()

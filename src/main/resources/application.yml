@@ -1,6 +1,9 @@
 # ── Central Management Subsystem Configuration ──
 
 spring:
+  profiles:
+    active: dev
+
   application:
     name: cms
 

@@ -9,6 +9,7 @@ import com.bitiriciler32.cms.notification.repository.DeviceFcmTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -24,6 +25,7 @@ public class NotificationService {
     /**
      * Send push notifications to all users who have alerts for the given event.
      */
+    @Transactional
     public void sendAlertNotifications(Long eventId) {
         List<UserAlertEntity> alerts = userAlertRepository.findByEventId(eventId);
 
