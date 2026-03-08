@@ -59,3 +59,14 @@ logging:
   level:
     com.bitiriciler32.cms: DEBUG
     org.springframework.security: INFO
+
+# ── Actuator ──
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always   # shows DB, MinIO, diskSpace sub-components
+

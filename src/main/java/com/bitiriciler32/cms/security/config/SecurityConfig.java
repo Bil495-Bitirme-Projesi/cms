@@ -49,8 +49,9 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Herkese açık: login endpoint'leri
+                        // Public: login endpoints + health check
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
                         // Dev-only test endpoints (only active with "dev" profile)
                         .requestMatchers("/api/dev/**").permitAll()
                         // Subsystem endpoint'leri: SubsystemJwtFilter doğrular, burada authenticated yeterli

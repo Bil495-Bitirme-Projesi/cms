@@ -39,6 +39,7 @@ public class InferenceWsEndpoint extends TextWebSocketHandler {
                                       @NonNull TextMessage message) throws Exception {
         String sessionId = session.getId();
         String payload = message.getPayload();
+        inferenceWsSender.recordMessageReceived();
 
         try {
             JsonNode root = objectMapper.readTree(payload);
