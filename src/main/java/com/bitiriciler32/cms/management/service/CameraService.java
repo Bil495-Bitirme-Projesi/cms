@@ -95,7 +95,9 @@ public class CameraService {
                 camera.getName(),
                 camera.getRtspUrl(),
                 camera.getDetectionEnabled(),
-                camera.getThreshold()
+                camera.getThreshold(),
+                camera.getStreamStatus(),
+                camera.getLastHeartbeatAt()
         );
     }
 }

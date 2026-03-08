@@ -15,6 +15,6 @@ public class EventPublisher {
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public void publishEventCreated(Long eventId) {
-        applicationEventPublisher.publishEvent(new EventCreatedEvent(this, eventId));
+        applicationEventPublisher.publishEvent(new EventCreatedEvent(eventId));
     }
 }

@@ -1,9 +1,12 @@
 package com.bitiriciler32.cms.management.dto;
 
 import com.bitiriciler32.cms.management.entity.CameraEntity;
+import com.bitiriciler32.cms.management.entity.StreamStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -14,6 +17,8 @@ public class CameraResponse {
     private String rtspUrl;
     private Boolean detectionEnabled;
     private Double threshold;
+    private StreamStatus streamStatus;
+    private Instant lastHeartbeatAt;
 
     public static CameraResponse fromEntity(CameraEntity entity) {
         return new CameraResponse(
@@ -21,7 +26,9 @@ public class CameraResponse {
                 entity.getName(),
                 entity.getRtspUrl(),
                 entity.getDetectionEnabled(),
-                entity.getThreshold()
+                entity.getThreshold(),
+                entity.getStreamStatus(),
+                entity.getLastHeartbeatAt()
         );
     }
 }

@@ -1,6 +1,7 @@
 package com.bitiriciler32.cms.notification.event;
 
 import com.bitiriciler32.cms.anomaly.event.EventCreatedEvent;
+import com.bitiriciler32.cms.management.event.CameraOfflineEvent;
 import com.bitiriciler32.cms.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,15 +11,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.event.TransactionPhase;
 
 /**
- * Listens for EventCreatedEvent signals from the Anomaly Event module
- * and triggers push notification delivery.
+ * Central listener for all notification-triggering domain events.
  *
- * Uses @TransactionalEventListener(AFTER_COMMIT) so that:
- *   - Notifications are only sent after DB data is committed and visible
- *   - Failures here do NOT roll back the anomaly event / alert records
- *
- * Uses @Async so that the HTTP response to the AI node is not delayed
- * by push notification delivery.
+ * onEventCreated: anomaly alert push notifications to assigned operators.
+ * onCameraOffline: camera-down push notifications to admin users.
  */
 @Component
 @RequiredArgsConstructor
@@ -27,6 +23,12 @@ public class NotificationEventListener {
 
     private final NotificationService notificationService;
 
+    /**
+     * Anomaly event → push notifications to assigned operators.
+     *
+     * @TransactionalEventListener(AFTER_COMMIT): only fires after anomaly data is committed.
+     * @Async: HTTP response to AI node is not delayed by FCM calls.
+     */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEventCreated(EventCreatedEvent event) {
@@ -34,9 +36,31 @@ public class NotificationEventListener {
             log.info("Notification triggered for event id: {}", event.getEventId());
             notificationService.sendAlertNotifications(event.getEventId());
         } catch (Exception e) {
-            // Log and swallow — DB records are already committed and safe.
-            // A retry mechanism (e.g. scheduled job) can pick these up later.
             log.error("Failed to send notifications for event id: {}", event.getEventId(), e);
+        }
+    }
+
+    /**
+     * Camera went offline → push notifications to admin users.
+     *
+     * @TransactionalEventListener(AFTER_COMMIT): the event is published inside
+     * CameraHealthService.applyStatusReport()'s @Transactional method.
+     * We must wait for that transaction to commit so that:
+     *   - streamStatus and lastOfflineNotifiedAt are persisted before notification fires
+     *   - if the transaction rolls back, no spurious notification is sent
+     *
+     * @Async: WebSocket message processing thread is not blocked by FCM calls.
+     */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onCameraOffline(CameraOfflineEvent event) {
+        try {
+            log.info("Camera offline notification triggered: cameraId={}, name={}",
+                    event.getCameraId(), event.getCameraName());
+            notificationService.sendCameraOfflineNotifications(event.getCameraId(), event.getCameraName());
+        } catch (Exception e) {
+            log.error("Failed to send camera-offline notifications for cameraId={}: {}",
+                    event.getCameraId(), e.getMessage(), e);
         }
     }
 }

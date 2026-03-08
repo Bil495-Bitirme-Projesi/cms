@@ -1,5 +1,6 @@
 package com.bitiriciler32.cms.management.websocket;
 
+import com.bitiriciler32.cms.management.service.CameraHealthService;
 import com.bitiriciler32.cms.security.service.JwtTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -15,13 +16,15 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private final ConfigSyncService configSyncService;
     private final InferenceWsSender inferenceWsSender;
+    private final CameraHealthService cameraHealthService;
     private final JwtTokenService jwtTokenService;
     private final ObjectMapper objectMapper;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(
-                        new InferenceWsEndpoint(configSyncService, inferenceWsSender, objectMapper),
+                        new InferenceWsEndpoint(configSyncService, inferenceWsSender,
+                                cameraHealthService, objectMapper),
                         "/ws/inference-sync")
                 .addInterceptors(new WsJwtHandshakeInterceptor(jwtTokenService))
                 .setAllowedOrigins("*");
