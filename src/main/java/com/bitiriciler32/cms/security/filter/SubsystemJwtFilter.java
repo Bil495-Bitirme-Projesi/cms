@@ -18,25 +18,24 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Subsystem JWT doğrulama filtresi.
+ * Subsystem JWT authentication filter.
  *
- * Sadece AI düğümüne ait endpoint'lerde devreye girer:
+ * Only active for AI node endpoints:
  *   POST /api/events/ingest
  *   POST /api/clips/upload-url
  *
- * Beklenen token tipi: subsystem JWT (type=subsystem, scope=inference_sync)
- * Token, /api/auth/subsystem-login ile alınır.
+ * Validates that the token is a subsystem JWT (type=subsystem).
+ * Token is obtained via POST /api/auth/subsystem-login.
  *
- * Bu filter JwtAuthenticationFilter'dan ÖNCE çalışır. Eğer token bir subsystem
- * token'ıysa SecurityContext'i doldurur; JwtAuthenticationFilter ikinci geçişte
- * zaten dolu context'i görüp atlar.
+ * This filter runs BEFORE JwtAuthenticationFilter. If the token is a valid
+ * subsystem token, it populates the SecurityContext; JwtAuthenticationFilter
+ * then sees an already-authenticated context and skips.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SubsystemJwtFilter extends OncePerRequestFilter {
 
-    private static final String INFERENCE_SYNC_SCOPE = "inference_sync";
 
     private final JwtTokenService jwtTokenService;
 
@@ -62,7 +61,7 @@ public class SubsystemJwtFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.warn("Subsystem endpoint'e Authorization header'sız istek: {}", request.getServletPath());
+            log.warn("Subsystem endpoint called without Authorization header: {}", request.getServletPath());
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
                     "Subsystem JWT required. Use /api/auth/subsystem-login to obtain a token.");
             return;
@@ -71,10 +70,10 @@ public class SubsystemJwtFilter extends OncePerRequestFilter {
         final String jwt = authHeader.substring(7);
 
         try {
-            if (!jwtTokenService.validateSubsystemToken(jwt, INFERENCE_SYNC_SCOPE)) {
-                log.warn("Geçersiz veya yetersiz scope'lu subsystem token: {}", request.getServletPath());
+            if (!jwtTokenService.validateSubsystemToken(jwt)) {
+                log.warn("Invalid subsystem token for endpoint: {}", request.getServletPath());
                 response.sendError(HttpServletResponse.SC_FORBIDDEN,
-                        "Invalid subsystem token or insufficient scope.");
+                        "Invalid subsystem token.");
                 return;
             }
 
@@ -86,10 +85,10 @@ public class SubsystemJwtFilter extends OncePerRequestFilter {
                     List.of(new SimpleGrantedAuthority("ROLE_SUBSYSTEM"))
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
-            log.debug("Subsystem '{}' başarıyla doğrulandı → {}", subsystemId, request.getServletPath());
+            log.debug("Subsystem '{}' authenticated successfully → {}", subsystemId, request.getServletPath());
 
         } catch (Exception e) {
-            log.warn("Subsystem token doğrulama hatası: {}", e.getMessage());
+            log.warn("Subsystem token validation error: {}", e.getMessage());
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Subsystem token validation failed.");
             return;
         }

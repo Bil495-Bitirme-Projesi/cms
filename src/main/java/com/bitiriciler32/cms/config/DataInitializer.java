@@ -50,7 +50,6 @@ public class DataInitializer implements CommandLineRunner {
             SubsystemCredentialEntity credential = SubsystemCredentialEntity.builder()
                     .subsystemId(subsystemId)
                     .subsystemSecret(subsystemSecret)
-                    .scope("inference_sync")
                     .build();
             subsystemCredentialRepository.save(credential);
             log.info("Subsystem credential created: id={}", subsystemId);

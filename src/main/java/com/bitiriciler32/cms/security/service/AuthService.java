@@ -39,7 +39,7 @@ public class AuthService {
 
     /**
      * Authenticate a subsystem (e.g., AI Inference Node) with subsystemId + secret.
-     * Returns a JWT containing the subsystem's scope.
+     * Returns a JWT with type=subsystem.
      */
     public AuthResponse authenticateSubsystem(SubsystemLoginRequest request) {
         SubsystemCredentialEntity credential = subsystemCredentialRepository
@@ -50,8 +50,7 @@ public class AuthService {
             throw new BadCredentialsException("Invalid subsystem credentials");
         }
 
-        String token = jwtTokenService.generateSubsystemToken(
-                credential.getSubsystemId(), credential.getScope());
+        String token = jwtTokenService.generateSubsystemToken(credential.getSubsystemId());
 
         return new AuthResponse(token, jwtTokenService.getExpirationMs());
     }

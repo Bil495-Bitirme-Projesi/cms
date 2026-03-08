@@ -24,8 +24,4 @@ public class SubsystemCredentialEntity {
 
     @Column(nullable = false)
     private String subsystemSecret;
-
-    /** Scope granted to this subsystem (e.g., "inference_sync"). */
-    @Column(nullable = false)
-    private String scope;
 }

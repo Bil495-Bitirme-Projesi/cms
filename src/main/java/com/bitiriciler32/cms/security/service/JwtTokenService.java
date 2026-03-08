@@ -57,11 +57,11 @@ public class JwtTokenService {
     }
 
     /**
-     * Generate a JWT for a subsystem (e.g., AI Inference Node) with a specific scope.
+     * Generate a JWT for a subsystem (e.g., AI Inference Node).
+     * The token carries type=subsystem so it can be distinguished from user tokens.
      */
-    public String generateSubsystemToken(String subsystemId, String scope) {
+    public String generateSubsystemToken(String subsystemId) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("scope", scope);
         claims.put("type", "subsystem");
         return buildToken(claims, subsystemId, subsystemExpirationMs);
     }
@@ -71,14 +71,14 @@ public class JwtTokenService {
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 
-    public boolean validateSubsystemToken(String token, String requiredScope) {
+    /**
+     * Validate that a token is a non-expired subsystem token.
+     */
+    public boolean validateSubsystemToken(String token) {
         try {
             Claims claims = extractAllClaims(token);
-            String scope = claims.get("scope", String.class);
             String type = claims.get("type", String.class);
-            return "subsystem".equals(type)
-                    && requiredScope.equals(scope)
-                    && !isTokenExpired(token);
+            return "subsystem".equals(type) && !isTokenExpired(token);
         } catch (Exception e) {
             return false;
         }
@@ -88,9 +88,6 @@ public class JwtTokenService {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public String extractScope(String token) {
-        return extractClaim(token, claims -> claims.get("scope", String.class));
-    }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);

@@ -64,10 +64,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                // Subsystem filter önce çalışır (ingest + upload-url için)
-                .addFilterBefore(subsystemJwtFilter, UsernamePasswordAuthenticationFilter.class)
-                // Kullanıcı JWT filter sonra çalışır
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // SubsystemJwtFilter runs first (for ingest + upload-url paths only)
+                // JwtAuthenticationFilter runs second (for all other authenticated paths)
+                // Both sit before UsernamePasswordAuthenticationFilter in the chain.
+                // addFilterBefore(A, X) then addFilterBefore(B, A) gives: B → A → X
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(subsystemJwtFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

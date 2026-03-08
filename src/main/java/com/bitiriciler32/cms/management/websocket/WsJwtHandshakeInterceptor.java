@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
@@ -13,7 +14,7 @@ import java.util.Map;
 
 /**
  * Validates JWT during WebSocket handshake.
- * Only tokens with the required scope (e.g., "inference_sync") are accepted.
+ * Only valid subsystem tokens (type=subsystem) are accepted.
  */
 @RequiredArgsConstructor
 @Slf4j
@@ -22,10 +23,10 @@ public class WsJwtHandshakeInterceptor implements HandshakeInterceptor {
     private final JwtTokenService jwtTokenService;
 
     @Override
-    public boolean beforeHandshake(ServerHttpRequest request,
-                                    ServerHttpResponse response,
-                                    WebSocketHandler wsHandler,
-                                    Map<String, Object> attributes) {
+    public boolean beforeHandshake(@NonNull ServerHttpRequest request,
+                                   @NonNull ServerHttpResponse response,
+                                   @NonNull WebSocketHandler wsHandler,
+                                   @NonNull Map<String, Object> attributes) {
         try {
             URI uri = request.getURI();
             String query = uri.getQuery();
@@ -37,7 +38,7 @@ public class WsJwtHandshakeInterceptor implements HandshakeInterceptor {
 
             String token = extractTokenFromQuery(query);
 
-            if (jwtTokenService.validateSubsystemToken(token, "inference_sync")) {
+            if (jwtTokenService.validateSubsystemToken(token)) {
                 log.info("WebSocket handshake accepted for subsystem");
                 return true;
             }
@@ -51,10 +52,10 @@ public class WsJwtHandshakeInterceptor implements HandshakeInterceptor {
     }
 
     @Override
-    public void afterHandshake(ServerHttpRequest request,
-                                ServerHttpResponse response,
-                                WebSocketHandler wsHandler,
-                                Exception exception) {
+    public void afterHandshake(@NonNull ServerHttpRequest request,
+                               @NonNull ServerHttpResponse response,
+                               @NonNull WebSocketHandler wsHandler,
+                               Exception exception) {
         // No-op
     }
 
