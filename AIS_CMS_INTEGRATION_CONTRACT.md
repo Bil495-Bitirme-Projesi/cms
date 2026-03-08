@@ -83,16 +83,23 @@ Content-Type: application/json
 
 - Token is valid for **24 hours** (`subsystem-expiration-ms: 86400000`).
 - AIS should re-authenticate before expiry.
-- The JWT contains `type: "subsystem"` to distinguish it from user tokens.
 
 ### 2.4 Dev-Environment Credentials
 
-| Key               | Default Value                                |
+| Key               | Default Value (dev only)                     |
 |-------------------|----------------------------------------------|
 | `subsystemId`     | `ai-inference-node`                          |
 | `subsystemSecret` | `dev-only-subsystem-secret-change-in-prod`   |
 
----
+
+> **For AIS developers:**
+> Do **not** hardcode `subsystemSecret` in source code.
+> Read it from an environment variable at runtime:
+>
+> ```
+> CMS_SUBSYSTEM_SECRET=<secret>   # or whatever env var name AIS chooses
+> ```
+
 
 ## 3. HTTP Endpoints (AIS → CMS)
 
@@ -258,7 +265,12 @@ as a heartbeat.
 **When to send:**
 - When AIS successfully opens an RTSP stream → `ONLINE`
 - When AIS fails to connect or loses an RTSP stream → `OFFLINE`
-- Optionally as periodic heartbeat (e.g., every 60s) with current status
+- **Periodically as a heartbeat** even if status has not changed (agreed interval: see §10 item 3)
+
+**Heartbeat requirement:**
+AIS **must** send periodic `CAMERA_STATUS` messages for each active camera regardless
+of whether the status has changed.
+CMS records `lastHeartbeatAt` on every received message for monitoring purposes.
 
 ---
 
@@ -333,8 +345,6 @@ AIS does NOT need to request this — it arrives automatically.
 **AIS should:**
 - On `UPSERT`: add or update the camera in its local config. Restart stream if `rtspUrl` changed.
 - On `DELETE`: stop the stream and remove the camera from its local config.
-- On `detectionEnabled: false`: stop processing but may keep the RTSP connection alive
-  (to detect when it comes back online).
 
 ---
 
@@ -349,24 +359,6 @@ Complete sequence for uploading a video clip:
 4. AIS → MinIO: PUT <uploadUrl> with video binary (Content-Type: video/mp4)
 5. AIS → CMS:  POST /api/events/ingest { ..., clipObjectKey: "cameras/5/events/42.mp4" }
 ```
-
-**Alternative flow** (ingest first, upload later):
-```
-1. AIS → CMS:  POST /api/events/ingest { ..., clipObjectKey: null }
-2. CMS → AIS:  { eventId: 42 }
-3. AIS → CMS:  POST /api/clips/upload-url { cameraId: 5, eventId: 42 }
-4. AIS → MinIO: PUT <uploadUrl> with video binary
-5. (CMS already has the objectKey from step 3, operators can access clip later)
-```
-
-> **Note:** Currently CMS does not have an endpoint to retroactively attach
-> a `clipObjectKey` to an existing event. If AIS wants to ingest first and upload
-> later, the `clipObjectKey` should be deterministically computed
-> (`cameras/{cameraId}/events/{eventId}.mp4`) and included in the ingest request,
-> even before the upload completes. The mobile app handles the "clip not ready"
-> case by receiving a `202 Accepted` when requesting a download URL.
-
----
 
 ## 6. Error Response Format
 
@@ -405,6 +397,14 @@ All HTTP error responses follow a consistent format:
 ---
 
 ## 7. Enum / Constant Value Contracts
+
+> ⚠️ **Important:** The values listed in this section represent the CMS-side
+> understanding at the time of writing. The definitive values for `severity`,
+> `type`, and other AIS-originated fields **will be determined by the AIS
+> team** based on what the model actually detects and how it classifies events.
+> Do **not** implement AIS behaviour directly from this document — treat these
+> as a starting point for discussion. Agreed values should be reflected back
+> into this document before either side finalises their implementation.
 
 ### 7.1 Severity
 
@@ -591,4 +591,5 @@ These are items that need to be agreed upon between CMS and AIS developers:
 | 8 | **WebSocket reconnection** | Backoff strategy on disconnect? CMS sends nothing on reconnect — AIS must re-send SNAPSHOT request. | AIS responsibility. Exponential backoff recommended. |
 | 9 | **Clip file format** | Always `.mp4`? Or can it be `.avi`, `.mkv`? | objectKey hardcoded as `.mp4` in CMS. |
 | 10 | **Score range** | Is score always 0.0–1.0, or can the model output arbitrary ranges? | CMS stores as-is. Mobile app displays as percentage. |
+| 11 | **Secret sharing** | How will `subsystemSecret` be shared across environments? | To be agreed: team password manager, shared `.env`, or CI/CD secret store. Both CMS (`SUBSYSTEM_SECRET`) and AIS must use the same value per environment. |
 

@@ -32,6 +32,13 @@ import java.time.Instant;
  *    We suppress repeated OFFLINE notifications within a configurable cooldown window
  *    (OFFLINE_NOTIFY_COOLDOWN). The status in the DB still reflects reality;
  *    only the push notification is suppressed.
+ *
+ * Threading note:
+ *    applyStatusReport() is called directly on the WebSocket handler thread.
+ *    Each call does 1 DB read + 1-3 DB writes (~5-20ms on local Postgres).
+ *    At the expected scale (tens of cameras, heartbeat every ~60s) this is negligible.
+ *    If camera count grows significantly or heartbeat interval shrinks, consider
+ *    dispatching this work to a dedicated thread pool via @Async.
  */
 @Service
 @RequiredArgsConstructor
