@@ -41,6 +41,9 @@ Thumbs.db
 firebase-service-account.json
 .env
 
+### TLS certificates (generated locally, never commit private keys) ###
+nginx/certs/
+
 ### Design Reports (large binaries) ###
 project_design_reports/
 
