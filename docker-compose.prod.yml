@@ -51,10 +51,13 @@ services:
     expose:
       - "8080"   # only reachable inside the Docker network (nginx handles public access)
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      # Uses the 'readiness' health group which only checks DB and MinIO.
+      # aisWebSocket is excluded so a missing AIS connection does not block nginx startup.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 60s   # give Spring Boot time to fully start before counting failures
 
   # ── Nginx (TLS termination + reverse proxy) ───────────────
   nginx:

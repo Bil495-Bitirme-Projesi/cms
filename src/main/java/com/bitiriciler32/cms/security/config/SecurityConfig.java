@@ -50,8 +50,10 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public: login endpoints + health check
+                        // /actuator/health/** covers the root endpoint and all group sub-paths
+                        // (e.g. /actuator/health/readiness used by Docker healthcheck)
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/health/**").permitAll()
                         // Dev-only test endpoints (only active with "dev" profile)
                         .requestMatchers("/api/dev/**").permitAll()
                         // Subsystem endpoint'leri: SubsystemJwtFilter doğrular, burada authenticated yeterli

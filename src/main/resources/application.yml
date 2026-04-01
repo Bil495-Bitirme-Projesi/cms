@@ -69,4 +69,11 @@ management:
   endpoint:
     health:
       show-details: always   # shows DB, MinIO, diskSpace sub-components
+      # readiness group: used by Docker healthcheck.
+      # Only includes infrastructure dependencies (db, minio).
+      # aisWebSocket is intentionally excluded — AIS not being connected
+      # is an operational concern, not a reason to keep nginx from starting.
+      group:
+        readiness:
+          include: db,minio
 
