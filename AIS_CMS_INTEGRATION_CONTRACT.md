@@ -39,7 +39,7 @@ This document defines the complete communication contract between the
 
 | Channel     | Direction       | Purpose                                      |
 |-------------|-----------------|----------------------------------------------|
-| HTTP REST   | AIS → CMS       | Event ingestion, presigned upload URL request |
+| HTTP REST   | AIS → CMS       | Event ingestion (includes presigned upload URL) |
 | WebSocket   | Bidirectional   | Camera config sync, camera health status      |
 | MinIO (S3)  | AIS → MinIO     | Video clip upload via presigned URL           |
 
@@ -106,7 +106,8 @@ Content-Type: application/json
 ### 3.1 Ingest Anomaly Event
 
 Reports a detected anomaly to CMS. CMS creates the event record, assigns alerts
-to operators, and triggers push notifications.
+to operators, triggers push notifications, and **returns a presigned upload URL**
+for the video clip in the same response — no separate upload-url call needed.
 
 ```
 POST /api/events/ingest
@@ -123,8 +124,7 @@ Content-Type: application/json
   "score": 0.92,
   "severity": "HIGH",
   "type": "INTRUSION",
-  "modelVersion": "yolov8-v2.1.0",
-  "clipObjectKey": "cameras/5/events/42.mp4"
+  "modelVersion": "yolov8-v2.1.0"
 }
 ```
 
@@ -137,15 +137,33 @@ Content-Type: application/json
 | `severity`      | String  | ✅       | See [Enum contracts](#7-enum--constant-value-contracts). |
 | `type`          | String  | ✅       | See [Enum contracts](#7-enum--constant-value-contracts). |
 | `modelVersion`  | String  | ❌       | Which AI model produced this detection.                |
-| `clipObjectKey` | String  | ❌       | MinIO object key if clip was already uploaded.         |
 
 **Response (201 Created):**
 ```json
 {
   "eventId": 42,
-  "status": "CREATED"
+  "status": "CREATED",
+  "clipObjectKey": "cameras/5/events/42.mp4",
+  "clipUploadUrl": "http://minio:9000/anomaly-clips/cameras/5/events/42.mp4?X-Amz-Algorithm=...",
+  "clipUploadExpiresInSeconds": 300
 }
 ```
+
+| Field                        | Description                                                  |
+|------------------------------|--------------------------------------------------------------|
+| `eventId`                    | CMS-assigned event ID.                                       |
+| `clipObjectKey`               | MinIO object key where the clip must be PUT.                 |
+| `clipUploadUrl`              | Presigned PUT URL — valid for `clipUploadExpiresInSeconds`.  |
+| `clipUploadExpiresInSeconds` | Seconds until the presigned URL expires (default: 300).      |
+
+**Upload the clip using the presigned URL:**
+```bash
+curl -X PUT "<clipUploadUrl>" \
+  -H "Content-Type: video/mp4" \
+  --data-binary @clip.mp4
+```
+
+No additional auth headers are needed for the MinIO PUT — the signature is embedded in the URL.
 
 **Error Cases:**
 
@@ -161,47 +179,11 @@ CMS returns `409 Conflict`. AIS should treat `409` as a successful delivery.
 
 ---
 
-### 3.2 Request Presigned Upload URL
+### 3.2 ~~Request Presigned Upload URL~~ (Removed)
 
-Gets a presigned PUT URL for uploading a video clip to MinIO.
-
-```
-POST /api/clips/upload-url
-Authorization: Bearer <subsystem-token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "cameraId": 5,
-  "eventId": 42
-}
-```
-
-| Field      | Type | Required | Description                                |
-|------------|------|----------|--------------------------------------------|
-| `cameraId` | Long | ✅       | Camera that produced the clip.             |
-| `eventId`  | Long | ✅       | Event ID returned from `/api/events/ingest`. |
-
-**Response (200 OK):**
-```json
-{
-  "objectKey": "cameras/5/events/42.mp4",
-  "uploadUrl": "http://localhost:9000/anomaly-clips/cameras/5/events/42.mp4?X-Amz-Algorithm=...",
-  "expiresInSeconds": 300
-}
-```
-
-**Upload the clip:**
-```bash
-curl -X PUT "<uploadUrl>" \
-  -H "Content-Type: video/mp4" \
-  --data-binary @clip.mp4
-```
-
-The presigned URL expires in **5 minutes** (configurable). No additional auth
-headers are needed for the MinIO PUT — the signature is embedded in the URL.
+> **This endpoint has been removed.**
+> `POST /api/clips/upload-url` now returns `410 Gone`.
+> The presigned upload URL is included in the `POST /api/events/ingest` response (see §3.1).
 
 ---
 

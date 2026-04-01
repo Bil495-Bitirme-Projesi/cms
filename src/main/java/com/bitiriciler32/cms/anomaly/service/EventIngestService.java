@@ -10,6 +10,8 @@ import com.bitiriciler32.cms.common.exception.ResourceNotFoundException;
 import com.bitiriciler32.cms.management.entity.CameraEntity;
 import com.bitiriciler32.cms.management.entity.UserEntity;
 import com.bitiriciler32.cms.management.repository.CameraRepository;
+import com.bitiriciler32.cms.media.dto.UploadUrlResponse;
+import com.bitiriciler32.cms.media.service.ClipStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,9 @@ import java.util.List;
 /**
  * Handles anomaly event ingestion from the AI Inference Subsystem.
  * Idempotent: duplicate sourceEventId submissions are rejected.
+ *
+ * On successful ingestion, CMS generates the clip object key and a presigned
+ * upload URL which AIS must use to PUT the video clip directly to MinIO.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,6 +36,7 @@ public class EventIngestService {
     private final RecipientResolver recipientResolver;
     private final AlertCommandService alertCommandService;
     private final EventPublisher eventPublisher;
+    private final ClipStorageService clipStorageService;
 
     @Transactional
     public EventIngestResponse ingest(EventIngestRequest request) {
@@ -52,11 +58,15 @@ public class EventIngestService {
                 .severity(request.getSeverity())
                 .type(request.getType())
                 .modelVersion(request.getModelVersion())
-                .clipObjectKey(request.getClipObjectKey())
                 .camera(camera)
                 .build();
 
         event = anomalyEventRepository.save(event);
+
+        // Generate clip object key and presigned upload URL now that we have the event ID.
+        // Hibernate dirty-checking will include clipObjectKey in the UPDATE at commit.
+        UploadUrlResponse uploadInfo = clipStorageService.generateUploadUrl(camera.getId(), event.getId());
+        event.setClipObjectKey(uploadInfo.getObjectKey());
 
         // Resolve recipients and create per-user alerts
         List<UserEntity> recipients = recipientResolver.resolveRecipients(
@@ -69,6 +79,12 @@ public class EventIngestService {
         log.info("Anomaly event ingested: id={}, sourceEventId={}, camera={}, severity={}",
                 event.getId(), event.getSourceEventId(), camera.getId(), event.getSeverity());
 
-        return new EventIngestResponse(event.getId(), "CREATED");
+        return new EventIngestResponse(
+                event.getId(),
+                "CREATED",
+                uploadInfo.getObjectKey(),
+                uploadInfo.getUploadUrl(),
+                uploadInfo.getExpiresInSeconds()
+        );
     }
 }

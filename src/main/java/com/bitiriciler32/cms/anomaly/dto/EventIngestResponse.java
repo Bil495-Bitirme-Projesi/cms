@@ -10,4 +10,9 @@ import lombok.NoArgsConstructor;
 public class EventIngestResponse {
     private Long eventId;
     private String status;
+    /** MinIO object key where AIS should PUT the video clip. */
+    private String clipObjectKey;
+    /** Presigned PUT URL — valid for {@code clipUploadExpiresInSeconds} seconds. */
+    private String clipUploadUrl;
+    private Long clipUploadExpiresInSeconds;
 }

@@ -32,6 +32,4 @@ public class EventIngestRequest {
     private String type;
 
     private String modelVersion;
-
-    private String clipObjectKey;
 }

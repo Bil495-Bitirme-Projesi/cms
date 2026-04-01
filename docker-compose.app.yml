@@ -41,7 +41,7 @@ services:
       - "8050:8050"   # directly exposed — no nginx in front
     environment:
       DB_URL:          jdbc:postgresql://postgres:5432/${DB_NAME}
-      MINIO_ENDPOINT:  http://minio:9000
+      MINIO_ENDPOINT:  ${MINIO_ENDPOINT}
       DB_NAME:         ${DB_NAME}
       DB_USERNAME:     ${DB_USERNAME}
       DB_PASSWORD:     ${DB_PASSWORD}

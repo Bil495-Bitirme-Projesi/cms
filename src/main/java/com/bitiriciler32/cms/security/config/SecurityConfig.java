@@ -58,7 +58,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/dev/**").permitAll()
                         // Subsystem endpoint'leri: SubsystemJwtFilter doğrular, burada authenticated yeterli
                         .requestMatchers(HttpMethod.POST, "/api/events/ingest").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/clips/upload-url").authenticated()
+                        // /api/clips/upload-url has been removed (returns 410 Gone).
+                        // Upload URL is now included in the POST /api/events/ingest response.
                         // WebSocket: WsJwtHandshakeInterceptor kendi JWT/scope kontrolünü yapar
                         .requestMatchers("/ws/**").permitAll()
                         // Sadece ADMIN rolü
