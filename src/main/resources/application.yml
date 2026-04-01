@@ -9,9 +9,9 @@ spring:
 
   # ── PostgreSQL ──
   datasource:
-    url: jdbc:postgresql://localhost:5432/cms_db
-    username: postgres
-    password: admin
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cms_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -39,15 +39,15 @@ jwt:
 
 # ── MinIO ──
 minio:
-  endpoint: http://localhost:9000
-  access-key: minio
-  secret-key: admin123
-  bucket-name: anomaly-clips
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minio}
+  secret-key: ${MINIO_SECRET_KEY:admin123}
+  bucket-name: ${MINIO_BUCKET:anomaly-clips}
   presign-expiry-seconds: 300    # 5 minutes
 
 # ── Firebase ──
 firebase:
-  credentials-path: firebase-service-account.json
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:firebase-service-account.json}
 
 # ── Subsystem Credentials ──
 subsystem:

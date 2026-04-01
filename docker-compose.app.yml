@@ -1,33 +1,35 @@
 # ============================================================
-# CMS — Production Stack
+# CMS — Application Stack (no TLS / no nginx)
 # ============================================================
-# Prerequisites:
-#   1. Copy .env.example to .env and set all values
-#   2. Generate TLS certificates:
-#        bash nginx/generate-certs.sh
+# Use this file to run the full application stack locally
+# using the pre-built image from the registry, without the
+# nginx TLS layer.
 #
-# Pull image from registry and start:
-#   docker compose -f docker-compose.prod.yml pull
+# Typical uses:
+#   - Verifying a registry image works before deploying to prod
+#   - Integration testing against a real DB + MinIO
+#   - Running the app on a dev machine without IDE
+#
+# For local development with IDE hot-reload, use:
+#   docker compose up -d          (docker-compose.yml — infra only)
+#
+# For the full production stack with TLS, use:
 #   docker compose -f docker-compose.prod.yml up -d
 #
-# Or build locally (no registry needed):
-#   docker compose -f docker-compose.prod.yml up --build -d
-#
-# Logs:
-#   docker compose -f docker-compose.prod.yml logs -f cms
+# Usage:
+#   docker compose -f docker-compose.app.yml pull
+#   docker compose -f docker-compose.app.yml up -d
+#   docker compose -f docker-compose.app.yml logs -f cms
+#   docker compose -f docker-compose.app.yml down
 # ============================================================
 
-name: cms-prod
+name: cms-app
 
 services:
 
-  # ── CMS Application ───────────────────────────────────────
+  # ── CMS Application (pulled from registry) ───────────────
   cms:
-    # Pull pre-built image from GitHub Container Registry.
-    # To build locally instead, comment out `image:` and
-    # uncomment `build: .`
     image: ghcr.io/${GITHUB_ORG}/cms:${CMS_VERSION:-latest}
-    # build: .
     container_name: cms-app
     restart: unless-stopped
     depends_on:
@@ -35,47 +37,27 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    ports:
+      - "8050:8050"   # directly exposed — no nginx in front
     environment:
-      # Internal Docker network addresses override the .env defaults
-      # (which point to localhost and are intended for local dev only)
-      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-      MINIO_ENDPOINT: http://minio:9000
-      # Pass through the rest from .env
-      DB_NAME:           ${DB_NAME}
-      DB_USERNAME:       ${DB_USERNAME}
-      DB_PASSWORD:       ${DB_PASSWORD}
-      MINIO_ACCESS_KEY:  ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY:  ${MINIO_SECRET_KEY}
-      MINIO_BUCKET:      ${MINIO_BUCKET}
-      JWT_SECRET:        ${JWT_SECRET}
-      SUBSYSTEM_ID:      ${SUBSYSTEM_ID}
-      SUBSYSTEM_SECRET:  ${SUBSYSTEM_SECRET}
+      DB_URL:          jdbc:postgresql://postgres:5432/${DB_NAME}
+      MINIO_ENDPOINT:  http://minio:9000
+      DB_NAME:         ${DB_NAME}
+      DB_USERNAME:     ${DB_USERNAME}
+      DB_PASSWORD:     ${DB_PASSWORD}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET:    ${MINIO_BUCKET}
+      JWT_SECRET:      ${JWT_SECRET}
+      SUBSYSTEM_ID:    ${SUBSYSTEM_ID}
+      SUBSYSTEM_SECRET: ${SUBSYSTEM_SECRET}
       FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-firebase-service-account.json}
-    expose:
-      - "8050"   # only reachable inside the Docker network (nginx handles public access)
     healthcheck:
-      # Uses the 'readiness' health group which only checks DB and MinIO.
-      # aisWebSocket is excluded so a missing AIS connection does not block nginx startup.
       test: ["CMD-SHELL", "wget -qO- http://localhost:8050/actuator/health/readiness || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 60s   # give Spring Boot time to fully start before counting failures
-
-  # ── Nginx (TLS termination + reverse proxy) ───────────────
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: cms-nginx
-    restart: unless-stopped
-    depends_on:
-      cms:
-        condition: service_healthy
-    ports:
-      - "80:80"    # redirects to HTTPS
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
+      start_period: 60s
 
   # ── PostgreSQL ────────────────────────────────────────────
   postgres:
@@ -86,6 +68,8 @@ services:
       POSTGRES_DB:       ${DB_NAME}
       POSTGRES_USER:     ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -103,6 +87,9 @@ services:
     environment:
       MINIO_ROOT_USER:     ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:

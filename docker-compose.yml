@@ -12,6 +12,8 @@
 #   Docker Compose reads .env automatically.
 # ============================================================
 
+name: cms-dev
+
 services:
   # ── PostgreSQL ──
   postgres:

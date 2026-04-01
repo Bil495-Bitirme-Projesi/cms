@@ -48,3 +48,8 @@ nginx/certs/
 project_design_reports/
 
 COPILOT_HANDOFF.md
+
+mesaj_ici_input.txt
+
+*.md
+!README.md
