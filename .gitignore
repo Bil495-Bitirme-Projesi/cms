@@ -41,8 +41,10 @@ Thumbs.db
 firebase-service-account.json
 .env
 
-### TLS certificates (generated locally, never commit private keys) ###
-nginx/certs/
+### TLS certificates — private key stays on the CMS host only ###
+# server.key  — never commit, share out-of-band (USB / Signal)
+# server.crt  — intentionally tracked; distribute to AIS and Flutter for TLS trust
+nginx/certs/server.key
 
 ### Design Reports (large binaries) ###
 project_design_reports/

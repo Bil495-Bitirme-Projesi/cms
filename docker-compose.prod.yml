@@ -39,7 +39,7 @@ services:
       # Internal Docker network addresses override the .env defaults
       # (which point to localhost and are intended for local dev only)
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
       # Pass through the rest from .env
       DB_NAME:           ${DB_NAME}
       DB_USERNAME:       ${DB_USERNAME}
@@ -103,6 +103,8 @@ services:
     environment:
       MINIO_ROOT_USER:     ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "9000:9000"   # exposed for AIS/app presigned URL access
     volumes:
       - minio_data:/data
     healthcheck:
