@@ -13,5 +13,4 @@ public class ReportFilterRequest {
     private Long cameraId;
     private Instant from;
     private Instant to;
-    private String severity;
 }

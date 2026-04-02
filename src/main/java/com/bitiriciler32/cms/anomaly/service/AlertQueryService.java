@@ -68,10 +68,6 @@ public class AlertQueryService {
                     predicates.add(cb.lessThanOrEqualTo(eventJoin.get("timestamp"),
                             filter.getTo()));
                 }
-                if (filter.getSeverity() != null) {
-                    predicates.add(cb.equal(eventJoin.get("severity"),
-                            filter.getSeverity()));
-                }
                 if (filter.getType() != null) {
                     predicates.add(cb.equal(eventJoin.get("type"),
                             filter.getType()));
@@ -89,9 +85,9 @@ public class AlertQueryService {
                 event.getId(),
                 event.getCamera().getId(),
                 event.getTimestamp(),
-                event.getSeverity(),
                 event.getType(),
                 event.getScore(),
+                event.getDescription(),
                 alert.getStatus().name()
         );
     }
@@ -104,8 +100,8 @@ public class AlertQueryService {
                 event.getCamera().getId(),
                 event.getTimestamp(),
                 event.getScore(),
-                event.getSeverity(),
                 event.getType(),
+                event.getDescription(),
                 event.getClipObjectKey(),
                 alert.getStatus().name()
         );

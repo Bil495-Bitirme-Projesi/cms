@@ -26,13 +26,13 @@ public class ReportQueryService {
     @Transactional(readOnly = true)
     public EventStatisticsResponse getEventStatistics(ReportFilterRequest filter) {
         Long totalEvents = anomalyEventAnalyticsRepository.countEvents(
-                filter.getCameraId(), filter.getFrom(), filter.getTo(), filter.getSeverity());
+                filter.getCameraId(), filter.getFrom(), filter.getTo());
 
         Long falsePositiveCount = userAlertAnalyticsRepository.countFalsePositives(
                 filter.getCameraId(), filter.getFrom(), filter.getTo());
 
         List<Object[]> timeData = anomalyEventAnalyticsRepository.countGroupedByTime(
-                filter.getCameraId(), filter.getFrom(), filter.getTo(), filter.getSeverity());
+                filter.getCameraId(), filter.getFrom(), filter.getTo());
 
         List<TimeSeriesPoint> timeSeries = timeData.stream()
                 .map(row -> {
@@ -50,8 +50,8 @@ public class ReportQueryService {
     }
 
     @Transactional(readOnly = true)
-    public SeverityDistributionResponse getSeverityDistribution(ReportFilterRequest filter) {
-        List<Object[]> data = anomalyEventAnalyticsRepository.countGroupedBySeverity(
+    public SeverityDistributionResponse getTypeDistribution(ReportFilterRequest filter) {
+        List<Object[]> data = anomalyEventAnalyticsRepository.countGroupedByType(
                 filter.getCameraId(), filter.getFrom(), filter.getTo());
 
         List<SeverityCount> distribution = data.stream()
@@ -59,46 +59,5 @@ public class ReportQueryService {
                 .collect(Collectors.toList());
 
         return new SeverityDistributionResponse(distribution);
-    }
-
-    @Transactional(readOnly = true)
-    public ModelPerformanceResponse getModelPerformance(ModelPerformanceFilterRequest filter) {
-        List<Object[]> data = anomalyEventAnalyticsRepository.countGroupedByModelVersion(
-                filter.getModelVersion(), filter.getFrom(), filter.getTo());
-
-        Long totalEvents = 0L;
-        for (Object[] row : data) {
-            totalEvents += (Long) row[1];
-        }
-
-        Long falsePositiveCount = userAlertAnalyticsRepository.countFalsePositives(
-                null, filter.getFrom(), filter.getTo());
-
-        Double falsePositiveRate = totalEvents > 0
-                ? (double) falsePositiveCount / totalEvents
-                : 0.0;
-
-        List<Object[]> timeData = anomalyEventAnalyticsRepository.countGroupedByTime(
-                null, filter.getFrom(), filter.getTo(), null);
-
-        List<TimeSeriesPoint> timeSeries = timeData.stream()
-                .map(row -> {
-                    Instant ts;
-                    if (row[0] instanceof Date) {
-                        ts = ((Date) row[0]).toLocalDate().atStartOfDay().toInstant(java.time.ZoneOffset.UTC);
-                    } else {
-                        ts = (Instant) row[0];
-                    }
-                    return new TimeSeriesPoint(ts, (Long) row[1]);
-                })
-                .collect(Collectors.toList());
-
-        return new ModelPerformanceResponse(
-                filter.getModelVersion(),
-                totalEvents,
-                falsePositiveCount,
-                falsePositiveRate,
-                timeSeries
-        );
     }
 }

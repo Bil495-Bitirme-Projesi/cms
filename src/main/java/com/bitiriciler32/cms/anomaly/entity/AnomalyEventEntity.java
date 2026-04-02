@@ -34,12 +34,14 @@ public class AnomalyEventEntity {
     private Double score;
 
     @Column(nullable = false)
-    private String severity;
-
-    @Column(nullable = false)
     private String type;
 
-    private String modelVersion;
+    /**
+     * Human-readable description of the anomaly produced by the LLM.
+     * Nullable — may be absent if the LLM inference step was skipped or failed.
+     */
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     /** Object key referencing the video clip stored in MinIO. */
     private String clipObjectKey;

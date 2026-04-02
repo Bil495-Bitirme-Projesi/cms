@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.List;
 
 /**
  * Computes daily model performance summaries for the analytics dashboard.
@@ -38,32 +37,23 @@ public class DailySummaryScheduler {
         Instant from = date.atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant to = date.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
 
-        List<Object[]> modelCounts = anomalyEventAnalyticsRepository
-                .countGroupedByModelVersion(null, from, to);
+        Long totalEvents = anomalyEventAnalyticsRepository.countEvents(null, from, to);
+        Long falsePositiveCount = userAlertAnalyticsRepository.countFalsePositives(null, from, to);
+        Double falsePositiveRate = totalEvents > 0
+                ? (double) falsePositiveCount / totalEvents
+                : 0.0;
 
-        for (Object[] row : modelCounts) {
-            String modelVersion = (String) row[0];
-            Long totalEvents = (Long) row[1];
+        DailyModelSummaryEntity summary = DailyModelSummaryEntity.builder()
+                .date(date)
+                .modelVersion(null)   // modelVersion no longer tracked on events
+                .totalEvents(totalEvents)
+                .falsePositiveCount(falsePositiveCount)
+                .falsePositiveRate(falsePositiveRate)
+                .build();
 
-            Long falsePositiveCount = userAlertAnalyticsRepository
-                    .countFalsePositives(null, from, to);
+        dailyModelSummaryRepository.save(summary);
 
-            Double falsePositiveRate = totalEvents > 0
-                    ? (double) falsePositiveCount / totalEvents
-                    : 0.0;
-
-            DailyModelSummaryEntity summary = DailyModelSummaryEntity.builder()
-                    .date(date)
-                    .modelVersion(modelVersion)
-                    .totalEvents(totalEvents)
-                    .falsePositiveCount(falsePositiveCount)
-                    .falsePositiveRate(falsePositiveRate)
-                    .build();
-
-            dailyModelSummaryRepository.save(summary);
-
-            log.info("Daily summary computed for date={}, model={}, events={}, fp={}",
-                    date, modelVersion, totalEvents, falsePositiveCount);
-        }
+        log.info("Daily summary computed for date={}, events={}, fp={}",
+                date, totalEvents, falsePositiveCount);
     }
 }

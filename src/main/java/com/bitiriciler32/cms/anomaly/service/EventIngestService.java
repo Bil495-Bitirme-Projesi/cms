@@ -55,9 +55,8 @@ public class EventIngestService {
                 .sourceEventId(request.getSourceEventId())
                 .timestamp(request.getTimestamp())
                 .score(request.getScore())
-                .severity(request.getSeverity())
                 .type(request.getType())
-                .modelVersion(request.getModelVersion())
+                .description(request.getDescription())
                 .camera(camera)
                 .build();
 
@@ -69,15 +68,14 @@ public class EventIngestService {
         event.setClipObjectKey(uploadInfo.getObjectKey());
 
         // Resolve recipients and create per-user alerts
-        List<UserEntity> recipients = recipientResolver.resolveRecipients(
-                camera, request.getSeverity(), request.getType());
+        List<UserEntity> recipients = recipientResolver.resolveRecipients(camera, request.getType());
         alertCommandService.createAlerts(event, recipients);
 
         // Flow handoff to Notification module
         eventPublisher.publishEventCreated(event.getId());
 
-        log.info("Anomaly event ingested: id={}, sourceEventId={}, camera={}, severity={}",
-                event.getId(), event.getSourceEventId(), camera.getId(), event.getSeverity());
+        log.info("Anomaly event ingested: id={}, sourceEventId={}, camera={}, type={}",
+                event.getId(), event.getSourceEventId(), camera.getId(), event.getType());
 
         return new EventIngestResponse(
                 event.getId(),

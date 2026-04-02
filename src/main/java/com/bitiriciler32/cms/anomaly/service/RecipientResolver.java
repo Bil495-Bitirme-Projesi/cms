@@ -23,7 +23,7 @@ public class RecipientResolver {
     /**
      * Returns all users who have access to the given camera.
      */
-    public List<UserEntity> resolveRecipients(CameraEntity camera, String severity, String type) {
+    public List<UserEntity> resolveRecipients(CameraEntity camera, String type) {
         List<UserCameraAccessEntity> accessList = userCameraAccessRepository.findByCamera(camera);
         return accessList.stream()
                 .map(UserCameraAccessEntity::getUser)

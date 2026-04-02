@@ -122,9 +122,8 @@ Content-Type: application/json
   "cameraId": 5,
   "timestamp": "2026-03-08T14:30:00Z",
   "score": 0.92,
-  "severity": "HIGH",
   "type": "INTRUSION",
-  "modelVersion": "yolov8-v2.1.0"
+  "description": "A person was detected crossing the restricted perimeter near gate 3."
 }
 ```
 
@@ -134,9 +133,8 @@ Content-Type: application/json
 | `cameraId`      | Long    | ✅       | Must match a camera registered in CMS.                 |
 | `timestamp`     | Instant | ✅       | ISO-8601 UTC. When the anomaly was detected.           |
 | `score`         | Double  | ✅       | Confidence score (0.0 – 1.0).                          |
-| `severity`      | String  | ✅       | See [Enum contracts](#7-enum--constant-value-contracts). |
 | `type`          | String  | ✅       | See [Enum contracts](#7-enum--constant-value-contracts). |
-| `modelVersion`  | String  | ❌       | Which AI model produced this detection.                |
+| `description`   | String  | ❌       | Human-readable description of the anomaly produced by the LLM. Sent as the push notification body if present. |
 
 **Response (201 Created):**
 ```json
@@ -144,7 +142,7 @@ Content-Type: application/json
   "eventId": 42,
   "status": "CREATED",
   "clipObjectKey": "cameras/5/events/42.mp4",
-  "clipUploadUrl": "http://minio:9000/anomaly-clips/cameras/5/events/42.mp4?X-Amz-Algorithm=...",
+  "clipUploadUrl": "http://192.168.1.42:9000/anomaly-clips/cameras/5/events/42.mp4?X-Amz-Algorithm=...",
   "clipUploadExpiresInSeconds": 300
 }
 ```
@@ -336,11 +334,20 @@ Complete sequence for uploading a video clip:
 
 ```
 1. AIS detects anomaly
-2. AIS → CMS:  POST /api/clips/upload-url { cameraId: 5, eventId: 42 }
-3. CMS → AIS:  { objectKey: "cameras/5/events/42.mp4", uploadUrl: "http://minio:9000/...", expiresInSeconds: 300 }
-4. AIS → MinIO: PUT <uploadUrl> with video binary (Content-Type: video/mp4)
-5. AIS → CMS:  POST /api/events/ingest { ..., clipObjectKey: "cameras/5/events/42.mp4" }
+2. AIS → CMS:   POST /api/events/ingest  { cameraId, sourceEventId, timestamp, score, type, ... }
+3. CMS → AIS:   201 { eventId, clipObjectKey, clipUploadUrl, clipUploadExpiresInSeconds, ... }
+4. AIS → MinIO: PUT <clipUploadUrl>  Content-Type: video/mp4  (binary body)
 ```
+
+> **Previous flow (removed):** Earlier versions required a separate
+> `POST /api/clips/upload-url` call before `POST /api/events/ingest`.
+> That endpoint now returns **HTTP 410 Gone**.  The presigned upload URL
+> is returned directly in the `POST /api/events/ingest` response (step 3 above).
+
+**Notes:**
+- No auth headers are needed for the MinIO PUT — the S3 SigV4 signature is embedded in `clipUploadUrl`.
+- AIS must PUT the clip within `clipUploadExpiresInSeconds` seconds (default 300).
+- The `clipObjectKey` in the ingest response is the canonical object key AIS (and CMS) use to reference the clip later.
 
 ## 6. Error Response Format
 
@@ -381,28 +388,14 @@ All HTTP error responses follow a consistent format:
 ## 7. Enum / Constant Value Contracts
 
 > ⚠️ **Important:** The values listed in this section represent the CMS-side
-> understanding at the time of writing. The definitive values for `severity`,
-> `type`, and other AIS-originated fields **will be determined by the AIS
+> understanding at the time of writing. The definitive values for `type`
+> and other AIS-originated fields **will be determined by the AIS
 > team** based on what the model actually detects and how it classifies events.
 > Do **not** implement AIS behaviour directly from this document — treat these
 > as a starting point for discussion. Agreed values should be reflected back
 > into this document before either side finalises their implementation.
 
-### 7.1 Severity
-
-Used in `EventIngestRequest.severity`. Currently stored as a plain String.
-
-| Value      | Meaning                            |
-|------------|------------------------------------|
-| `LOW`      | Low-confidence or minor anomaly.   |
-| `MEDIUM`   | Moderate confidence anomaly.       |
-| `HIGH`     | High-confidence anomaly.           |
-| `CRITICAL` | Immediate attention required.      |
-
-> **TODO:** Finalize whether these are the only allowed values or if AIS can
-> send arbitrary strings. Consider making this a strict enum.
-
-### 7.2 Event Type
+### 7.1 Event Type
 
 Used in `EventIngestRequest.type`. Currently stored as a plain String.
 
@@ -417,7 +410,7 @@ Used in `EventIngestRequest.type`. Currently stored as a plain String.
 > **TODO:** Agree on a definitive list. CMS currently stores this as a free-form
 > string, but the mobile app and analytics dashboard need a known set of values.
 
-### 7.3 Camera Status (WebSocket)
+### 7.2 Camera Status (WebSocket)
 
 Used in `CAMERA_STATUS` WebSocket messages.
 
@@ -466,20 +459,18 @@ AIS                              CMS                    MinIO
  │                                 │                       │
  │  (anomaly detected on cam 5)    │                       │
  │                                 │                       │
- │── POST /clips/upload-url ──────▶│                       │
- │◀── { uploadUrl, objectKey } ────│                       │
- │                                 │                       │
- │── PUT <uploadUrl> ─────────────────────────────────────▶│  upload clip
- │◀── 200 OK ──────────────────────────────────────────────│
- │                                 │                       │
  │── POST /events/ingest ─────────▶│                       │
  │   { sourceEventId, cameraId,    │                       │
- │     score, severity, type,      │                       │
- │     clipObjectKey }             │                       │
+ │     score, type, description }  │                       │
  │                                 │──▶ save event         │
  │                                 │──▶ create alerts      │
  │                                 │──▶ push notifications │
- │◀── 201 { eventId: 42 } ────────│                       │
+ │                                 │──▶ generate presigned │
+ │◀── 201 { eventId, clipUploadUrl,│    PUT URL            │
+ │          clipObjectKey, ... } ──│                       │
+ │                                 │                       │
+ │── PUT <clipUploadUrl> ─────────────────────────────────▶│  upload clip
+ │◀── 200 OK ──────────────────────────────────────────────│
 ```
 
 ### 8.3 Camera Config Change (Admin Action)
@@ -535,10 +526,8 @@ curl -s -X POST http://localhost:8050/api/events/ingest \
     "cameraId": 1,
     "timestamp": "2026-03-08T14:30:00Z",
     "score": 0.85,
-    "severity": "HIGH",
     "type": "INTRUSION",
-    "modelVersion": "yolov8-v2.1.0",
-    "clipObjectKey": "cameras/1/events/1.mp4"
+    "description": "A person was detected in the restricted zone near the main entrance."
   }' | jq .
 ```
 
@@ -563,8 +552,7 @@ These are items that need to be agreed upon between CMS and AIS developers:
 
 | # | Topic | Question | Current State |
 |---|-------|----------|---------------|
-| 1 | **Severity values** | What are the exact allowed severity values? Should CMS enforce a strict enum? | Free-form String. CMS stores whatever AIS sends. |
-| 2 | **Event type values** | What anomaly types will the model detect? | Free-form String. Need a definitive list for UI/analytics. |
+| 1 | **Event type values** | What anomaly types will the model detect? Should CMS enforce a strict enum? | Free-form String. Need a definitive list for UI/analytics. |
 | 3 | **Heartbeat interval** | Should AIS send periodic CAMERA_STATUS even if nothing changed? How often? | Not enforced. Recommended: every 60s. |
 | 4 | **Clip upload ordering** | Should AIS always upload clip before ingesting event, or is ingest-first acceptable? | Both work, but ingest-first requires deterministic objectKey. |
 | 5 | **Multiple AIS nodes** | Will there ever be more than one AIS instance? This affects WebSocket broadcast and status reporting. | Currently single-node assumed. |

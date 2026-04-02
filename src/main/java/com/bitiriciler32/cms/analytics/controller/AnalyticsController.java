@@ -22,15 +22,9 @@ public class AnalyticsController {
         return ResponseEntity.ok(reportQueryService.getEventStatistics(filter));
     }
 
-    @GetMapping("/severity")
-    public ResponseEntity<SeverityDistributionResponse> getSeverityDistribution(
+    @GetMapping("/type")
+    public ResponseEntity<SeverityDistributionResponse> getTypeDistribution(
             ReportFilterRequest filter) {
-        return ResponseEntity.ok(reportQueryService.getSeverityDistribution(filter));
-    }
-
-    @GetMapping("/model-performance")
-    public ResponseEntity<ModelPerformanceResponse> getModelPerformance(
-            ModelPerformanceFilterRequest filter) {
-        return ResponseEntity.ok(reportQueryService.getModelPerformance(filter));
+        return ResponseEntity.ok(reportQueryService.getTypeDistribution(filter));
     }
 }

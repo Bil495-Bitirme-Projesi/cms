@@ -14,8 +14,8 @@ public class AlertSummaryResponse {
     private Long eventId;
     private Long cameraId;
     private Instant timestamp;
-    private String severity;
     private String type;
     private Double score;
+    private String description;
     private String status;
 }

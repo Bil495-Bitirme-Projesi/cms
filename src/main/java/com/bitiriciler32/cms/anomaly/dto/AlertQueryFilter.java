@@ -14,6 +14,5 @@ public class AlertQueryFilter {
     private Long cameraId;
     private Instant from;
     private Instant to;
-    private String severity;
     private String type;
 }

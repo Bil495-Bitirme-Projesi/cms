@@ -15,8 +15,8 @@ public class AlertDetailResponse {
     private Long cameraId;
     private Instant timestamp;
     private Double score;
-    private String severity;
     private String type;
+    private String description;
     private String clipObjectKey;
     private String status;
 }

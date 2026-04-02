@@ -25,11 +25,9 @@ public class EventIngestRequest {
     @NotNull(message = "score is required")
     private Double score;
 
-    @NotBlank(message = "severity is required")
-    private String severity;
-
     @NotBlank(message = "type is required")
     private String type;
 
-    private String modelVersion;
+    /** LLM-generated description of the anomaly. Optional. */
+    private String description;
 }

@@ -53,3 +53,6 @@ mesaj_ici_input.txt
 
 *.md
 !README.md
+
+*.cmd
+*.sh

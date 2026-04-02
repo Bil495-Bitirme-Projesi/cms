@@ -38,9 +38,11 @@ public class NotificationService {
 
             List<DeviceFcmTokenEntity> tokens = deviceFcmTokenRepository.findByUserAndEnabledTrue(user);
 
-            String title = "Anomaly Detected — " + event.getSeverity();
-            String body = String.format("Camera %d: %s (score %.2f)",
-                    event.getCamera().getId(), event.getType(), event.getScore());
+            String title = "Anomaly Detected";
+            String body = (event.getDescription() != null && !event.getDescription().isBlank())
+                    ? event.getDescription()
+                    : String.format("Camera %d: %s (score %.2f)",
+                            event.getCamera().getId(), event.getType(), event.getScore());
 
             for (DeviceFcmTokenEntity deviceToken : tokens) {
                 pushNotificationSender.sendToToken(deviceToken.getFcmToken(), title, body);
