@@ -22,9 +22,7 @@ public class StorageClient {
     @Value("${minio.bucket-name}")
     private String bucketName;
 
-    /**
-     * Generate a presigned PUT URL for uploading a clip.
-     */
+    /** Generate a presigned PUT URL for uploading a clip. */
     public String presignPut(String objectKey, long expirySeconds) {
         try {
             return minioClient.getPresignedObjectUrl(
@@ -40,9 +38,7 @@ public class StorageClient {
         }
     }
 
-    /**
-     * Generate a presigned GET URL for downloading/streaming a clip.
-     */
+    /** Generate a presigned GET URL for downloading/streaming a clip. */
     public String presignGet(String objectKey, long expirySeconds) {
         try {
             return minioClient.getPresignedObjectUrl(

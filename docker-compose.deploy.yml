@@ -1,0 +1,162 @@
+﻿# ============================================================
+# CMS — Standalone Deploy Stack (HTTPS)
+# ============================================================
+# Self-contained stack for anyone running the system without
+# cloning the repository.  Pulls pre-built images from the
+# registry and terminates TLS with nginx for both the CMS API
+# and MinIO object storage.
+#
+# Prerequisites:
+#   1. Copy .env.example to .env and fill in all values.
+#      Key values for this file:
+#        MINIO_ENDPOINT=https://<hotspot-ip>:9443
+#          Windows Mobile Hotspot: https://192.168.137.1:9443
+#          Linux NetworkManager:   https://10.42.0.1:9443
+#      CMS API will be accessible at https://<same-ip>
+#
+#   2. Place TLS certificate files at:
+#        nginx/certs/server.crt
+#        nginx/certs/server.key
+#      Generate: bash nginx/generate-certs.sh cms-server.local 192.168.137.1 10.42.0.1
+#
+# Start:
+#   docker compose -f docker-compose.deploy.yml pull
+#   docker compose -f docker-compose.deploy.yml up -d
+#
+# Logs:
+#   docker compose -f docker-compose.deploy.yml logs -f cms
+#   docker compose -f docker-compose.deploy.yml logs -f nginx-cms
+#   docker compose -f docker-compose.deploy.yml logs -f nginx-minio
+# ============================================================
+name: cms-deploy
+services:
+  # ── CMS Application ───────────────────────────────────────
+  cms:
+    image: ghcr.io/${GITHUB_ORG}/cms:${CMS_VERSION:-latest}
+    # build: .   # uncomment to build locally instead of pulling
+    container_name: cms-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DB_URL:         jdbc:postgresql://postgres:5432/${DB_NAME}
+      # MINIO_ENDPOINT comes from .env — set it to the nginx-minio HTTPS address
+      # so presigned URLs embed the correct host for external clients.
+      # Example: MINIO_ENDPOINT=https://192.168.137.1:9443
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      # MinioClient uses server.crt (mounted below) to trust the self-signed
+      # certificate served by nginx-minio — no SSL verification disabled.
+      MINIO_CA_CERT_PATH: /etc/cms-certs/server.crt
+      DB_NAME:           ${DB_NAME}
+      DB_USERNAME:       ${DB_USERNAME}
+      DB_PASSWORD:       ${DB_PASSWORD}
+      MINIO_ACCESS_KEY:  ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY:  ${MINIO_SECRET_KEY}
+      MINIO_BUCKET:      ${MINIO_BUCKET}
+      JWT_SECRET:        ${JWT_SECRET}
+      SUBSYSTEM_ID:      ${SUBSYSTEM_ID}
+      SUBSYSTEM_SECRET:  ${SUBSYSTEM_SECRET}
+      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-firebase-service-account.json}
+    volumes:
+      - ./nginx/certs/server.crt:/etc/cms-certs/server.crt:ro
+    expose:
+      - "8050"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8050/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+  # ── Nginx — CMS TLS termination ───────────────────────────
+  nginx-cms:
+    image: nginx:1.27-alpine
+    container_name: cms-nginx-cms
+    restart: unless-stopped
+    depends_on:
+      cms:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+  # ── Nginx — MinIO TLS termination ─────────────────────────
+  # Exposes MinIO S3 API over HTTPS on port 9443.
+  # AIS and mobile app use presigned URLs through this proxy.
+  # Uses the same certificate as nginx-cms.
+  nginx-minio:
+    image: nginx:1.27-alpine
+    container_name: cms-nginx-minio
+    restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
+    ports:
+      - "${MINIO_HTTPS_PORT:-9443}:443"
+    volumes:
+      - ./nginx/nginx-minio.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+  # ── PostgreSQL ────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: cms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_USER:     ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  # ── MinIO ─────────────────────────────────────────────────
+  # External HTTPS access goes through nginx-minio (port 9443).
+  # Ports below are for direct developer access (pgAdmin, mc CLI, console UI).
+  minio:
+    image: minio/minio:latest
+    container_name: cms-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER:     ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  # ── MinIO bucket initializer (runs once) ──────────────────
+  minio-init:
+    image: minio/mc:latest
+    container_name: cms-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET:     ${MINIO_BUCKET}
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY} &&
+        mc mb --ignore-existing local/$${MINIO_BUCKET:-anomaly-clips} &&
+        echo 'Bucket ready.'
+      "
+volumes:
+  postgres_data:
+  minio_data:

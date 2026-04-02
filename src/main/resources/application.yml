@@ -44,6 +44,10 @@ minio:
   secret-key: ${MINIO_SECRET_KEY:admin123}
   bucket-name: ${MINIO_BUCKET:anomaly-clips}
   presign-expiry-seconds: 300    # 5 minutes
+  # Path to a PEM (.crt) file to trust for MINIO_ENDPOINT HTTPS connections.
+  # Required when MINIO_ENDPOINT uses a self-signed cert (e.g. nginx-minio in deploy stack).
+  # Leave blank for HTTP or CA-signed TLS — no extra config needed for local dev.
+  ca-cert-path: ${MINIO_CA_CERT_PATH:}
 
 # ── Firebase ──
 firebase:
