@@ -81,3 +81,13 @@ management:
         readiness:
           include: db,minio
 
+# ── SpringDoc / Swagger UI ──
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha      # endpoints alphabetically within each tag
+    tags-sorter: alpha            # tags alphabetically
+    display-request-duration: true
+  show-actuator: false            # keep /actuator endpoints out of the spec

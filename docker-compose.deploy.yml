@@ -59,9 +59,10 @@ services:
       JWT_SECRET:        ${JWT_SECRET}
       SUBSYSTEM_ID:      ${SUBSYSTEM_ID}
       SUBSYSTEM_SECRET:  ${SUBSYSTEM_SECRET}
-      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-firebase-service-account.json}
+      FIREBASE_CREDENTIALS_PATH: file:/app/config/firebase-service-account.json
     volumes:
       - ./nginx/certs/server.crt:/etc/cms-certs/server.crt:ro
+      - ./firebase-service-account.json:/app/config/firebase-service-account.json:ro
     expose:
       - "8050"
     healthcheck:

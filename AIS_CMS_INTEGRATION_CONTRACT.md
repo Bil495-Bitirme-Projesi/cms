@@ -1,7 +1,7 @@
 # AIS ↔ CMS Integration Contract
 
-> **Version:** 1.0-draft  
-> **Date:** 2026-03-08  
+> **Version:** 1.1-draft  
+> **Date:** 2026-04-02  
 > **Audience:** AI Inference Subsystem (AIS) developer
 
 This document defines the complete communication contract between the
@@ -27,21 +27,27 @@ This document defines the complete communication contract between the
 ## 1. Overview
 
 ```
-┌───────────────┐         HTTP (REST)          ┌───────────────┐
-│               │ ──────────────────────────▶  │               │
-│      AIS      │                              │      CMS      │
-│  (AI Inference│ ◀════════════════════════▶   │  (Spring Boot │
-│   Subsystem)  │     WebSocket (persistent)   │    Backend)   │
-│               │                              │               │
-│               │ ─── presigned PUT URL ──▶    │    MinIO      │
-└───────────────┘                              └───────────────┘
+┌───────────────┐    HTTPS (REST/WSS)     ┌──────────────┐     HTTP    ┌───────────────┐
+│               │ ──────────────────────▶ │  nginx-cms   │ ──────────▶ │      CMS      │
+│      AIS      │ ◀════════════════════▶  │  (port 443)  │ ◀════════▶  │  (Spring Boot │
+│  (AI Inference│     WSS (persistent)    └──────────────┘             │    Backend)   │
+│   Subsystem)  │                                                       │               │
+│               │ ─── presigned PUT URL ──▶ ┌──────────────┐  HTTP   ┌─────────┐       │
+└───────────────┘                           │ nginx-minio  │ ───────▶│  MinIO  │       │
+                                            │  (port 9443) │         └─────────┘       │
+                                            └──────────────┘                           │
 ```
+
+> **Deploy stack vs local dev:**  
+> In the **deploy stack** (`docker-compose.deploy.yml`) TLS is terminated by nginx
+> for both CMS (port 443) and MinIO (port 9443).  
+> In **local dev** (`docker-compose.yml`) services are plain HTTP — no nginx involved.
 
 | Channel     | Direction       | Purpose                                      |
 |-------------|-----------------|----------------------------------------------|
-| HTTP REST   | AIS → CMS       | Event ingestion (includes presigned upload URL) |
-| WebSocket   | Bidirectional   | Camera config sync, camera health status      |
-| MinIO (S3)  | AIS → MinIO     | Video clip upload via presigned URL           |
+| HTTPS REST  | AIS → CMS       | Event ingestion (includes presigned upload URL) |
+| WSS         | Bidirectional   | Camera config sync, camera health status      |
+| HTTPS (S3)  | AIS → MinIO     | Video clip upload via presigned URL (deploy) / HTTP (local dev) |
 
 ---
 
@@ -349,6 +355,34 @@ Complete sequence for uploading a video clip:
 - AIS must PUT the clip within `clipUploadExpiresInSeconds` seconds (default 300).
 - The `clipObjectKey` in the ingest response is the canonical object key AIS (and CMS) use to reference the clip later.
 
+### 5.1 `clipUploadUrl` Host — Deploy vs Local Dev
+
+| Environment  | `clipUploadUrl` host                                       |
+|--------------|------------------------------------------------------------|
+| Local dev    | `http://localhost:9000/...`  (MinIO direct, plain HTTP)    |
+| Deploy stack | `https://192.168.137.1:9443/...`  (via nginx-minio, HTTPS) |
+
+The host embedded in `clipUploadUrl` comes from `MINIO_ENDPOINT` set in `.env`.
+
+### 5.2 Self-Signed Certificate Trust (Deploy Stack)
+
+In the deploy stack `clipUploadUrl` starts with `https://`. The certificate is
+**self-signed** — AIS (Python) must explicitly trust it when performing the PUT:
+
+```python
+# Option A — pass the cert file to requests (recommended)
+import requests
+response = requests.put(clip_upload_url, data=clip_bytes,
+                        headers={"Content-Type": "video/mp4"},
+                        verify="/path/to/server.crt")   # repo: nginx/certs/server.crt
+
+# Option B — add to OS trust store once (system-wide, permanent)
+# Linux: cp server.crt /usr/local/share/ca-certificates/ && update-ca-certificates
+# Then requests/urllib3 trust it automatically without verify=
+```
+
+`nginx/certs/server.crt` is tracked in the repo — AIS can reference it directly.
+
 ## 6. Error Response Format
 
 All HTTP error responses follow a consistent format:
@@ -495,21 +529,52 @@ Admin App                        CMS                         AIS
 
 ### 9.1 CMS Address
 
-| Service     | URL                              |
-|-------------|----------------------------------|
-| CMS API     | `http://localhost:8050`           |
-| WebSocket   | `ws://localhost:8050/ws/inference-sync` |
-| MinIO API   | `http://localhost:9000`           |
-| MinIO Console | `http://localhost:9001`         |
+#### Local Dev (`docker-compose.yml`)
+
+| Service        | URL                                      |
+|----------------|------------------------------------------|
+| CMS API        | `http://localhost:8050`                  |
+| WebSocket      | `ws://localhost:8050/ws/inference-sync`  |
+| MinIO API      | `http://localhost:9000`                  |
+| MinIO Console  | `http://localhost:9001`                  |
+
+#### Deploy Stack (`docker-compose.deploy.yml`) — Hotspot Setup
+
+> Replace `192.168.137.1` with the actual hotspot host IP if different.
+> Linux NetworkManager hotspot uses `10.42.0.1` by default.
+
+| Service        | URL                                           |
+|----------------|-----------------------------------------------|
+| CMS API        | `https://192.168.137.1` / `https://cms-server.local` |
+| WebSocket      | `wss://192.168.137.1/ws/inference-sync`        |
+| MinIO API      | `https://192.168.137.1:9443`                  |
+| MinIO Console  | not exposed externally                        |
+
+> **TLS:** All HTTPS endpoints use the same self-signed certificate.  
+> The cert (`nginx/certs/server.crt`) covers `cms-server.local`,  
+> `192.168.137.1`, and `10.42.0.1` as Subject Alternative Names.  
+>  
+> AIS must trust this cert when connecting to CMS or uploading to MinIO.
+> See §5.2 for Python instructions.
 
 ### 9.2 Quick Test: Obtain Token
 
 ```bash
+# Local dev
 curl -s -X POST http://localhost:8050/api/auth/subsystem-login \
   -H "Content-Type: application/json" \
   -d '{
     "subsystemId": "ai-inference-node",
     "subsystemSecret": "dev-only-subsystem-secret-change-in-prod"
+  }' | jq .
+
+# Deploy stack (trust self-signed cert)
+curl -s --cacert nginx/certs/server.crt \
+  -X POST https://192.168.137.1/api/auth/subsystem-login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subsystemId": "ai-inference-node",
+    "subsystemSecret": "<SUBSYSTEM_SECRET from .env>"
   }' | jq .
 ```
 
@@ -518,7 +583,22 @@ curl -s -X POST http://localhost:8050/api/auth/subsystem-login \
 ```bash
 TOKEN="<token from above>"
 
+# Local dev
 curl -s -X POST http://localhost:8050/api/events/ingest \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "sourceEventId": "test-001",
+    "cameraId": 1,
+    "timestamp": "2026-03-08T14:30:00Z",
+    "score": 0.85,
+    "type": "INTRUSION",
+    "description": "A person was detected in the restricted zone near the main entrance."
+  }' | jq .
+
+# Deploy stack (trust self-signed cert)
+curl -s --cacert nginx/certs/server.crt \
+  -X POST https://192.168.137.1/api/events/ingest \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -535,7 +615,11 @@ curl -s -X POST http://localhost:8050/api/events/ingest \
 
 Using `websocat` or any WebSocket client:
 ```bash
+# Local dev
 websocat "ws://localhost:8050/ws/inference-sync?token=$TOKEN"
+
+# Deploy stack (WSS with self-signed cert — websocat flag: --insecure or trust cert in OS store)
+websocat --insecure "wss://192.168.137.1/ws/inference-sync?token=$TOKEN"
 
 # Then type:
 {"type":"SNAPSHOT"}

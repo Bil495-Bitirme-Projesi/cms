@@ -4,6 +4,7 @@ import com.bitiriciler32.cms.management.dto.CreateUserRequest;
 import com.bitiriciler32.cms.management.dto.UpdateUserRequest;
 import com.bitiriciler32.cms.management.dto.UserResponse;
 import com.bitiriciler32.cms.management.service.UserService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ public class UserManagementController {
 
     private final UserService userService;
 
+    @SecurityRequirement(name = "userAuth")
     @PostMapping
     public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(request));

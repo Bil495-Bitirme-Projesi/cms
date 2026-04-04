@@ -54,6 +54,13 @@ public class SecurityConfig {
                         // (e.g. /actuator/health/readiness used by Docker healthcheck)
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/actuator/health/**").permitAll()
+                        // Swagger UI + OpenAPI spec (development convenience)
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**"
+                        ).permitAll()
                         // Dev-only test endpoints (only active with "dev" profile)
                         .requestMatchers("/api/dev/**").permitAll()
                         // Subsystem endpoint'leri: SubsystemJwtFilter doğrular, burada authenticated yeterli
