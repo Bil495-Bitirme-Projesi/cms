@@ -2,6 +2,7 @@ package com.bitiriciler32.cms.security.config;
 
 import com.bitiriciler32.cms.security.filter.JwtAuthenticationFilter;
 import com.bitiriciler32.cms.security.filter.SubsystemJwtFilter;
+import com.bitiriciler32.cms.security.handler.JwtAuthenticationEntryPoint;
 import com.bitiriciler32.cms.security.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -27,10 +28,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Endpoint yetkilendirme mantığı:
  *  - /api/auth/**              → herkese açık (login endpoint'leri)
  *  - /api/events/ingest        → sadece subsystem JWT (scope: inference_sync)
- *  - /api/clips/upload-url     → sadece subsystem JWT (scope: inference_sync)
  *  - /ws/**                    → WsJwtHandshakeInterceptor kendi doğrulamasını yapar
- *  - /api/admin/**             → ADMIN rolü zorunlu
+ *  - /api/admin/**             → ADMIN rolü zorunlu (@PreAuthorize("hasRole('ADMIN')") ile)
  *  - diğer tüm endpoint'ler   → geçerli kullanıcı JWT'si zorunlu
+ *
+ * Hata yanıtları:
+ *  - Token yok / anonim kullanıcı     → JwtAuthenticationEntryPoint  → 401 + ApiErrorResponse
+ *  - Token var ama geçersiz/süresi dolmuş → JwtAuthenticationFilter  → 401 + ApiErrorResponse
+ *  - Geçerli token, yetersiz rol (@PreAuthorize ihlali) → GlobalExceptionHandler → 403 + ApiErrorResponse
  */
 @Configuration
 @EnableWebSecurity
@@ -41,6 +46,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final SubsystemJwtFilter subsystemJwtFilter;
     private final CustomUserDetailsService customUserDetailsService;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -69,12 +75,13 @@ public class SecurityConfig {
                         // Upload URL is now included in the POST /api/events/ingest response.
                         // WebSocket: WsJwtHandshakeInterceptor kendi JWT/scope kontrolünü yapar
                         .requestMatchers("/ws/**").permitAll()
-                        // Sadece ADMIN rolü
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // Geri kalan her şey: geçerli kullanıcı JWT'si zorunlu
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
+                .exceptionHandling(ex -> ex
+                        // No token / anonymous user → 401
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 // SubsystemJwtFilter runs first (for ingest + upload-url paths only)
                 // JwtAuthenticationFilter runs second (for all other authenticated paths)
                 // Both sit before UsernamePasswordAuthenticationFilter in the chain.
