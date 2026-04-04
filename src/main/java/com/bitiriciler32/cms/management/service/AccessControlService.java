@@ -2,6 +2,7 @@ package com.bitiriciler32.cms.management.service;
 
 import com.bitiriciler32.cms.common.exception.DuplicateResourceException;
 import com.bitiriciler32.cms.common.exception.ResourceNotFoundException;
+import com.bitiriciler32.cms.management.dto.UserCameraAccessResponse;
 import com.bitiriciler32.cms.management.entity.CameraEntity;
 import com.bitiriciler32.cms.management.entity.UserCameraAccessEntity;
 import com.bitiriciler32.cms.management.entity.UserEntity;
@@ -58,9 +59,18 @@ public class AccessControlService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserCameraAccessEntity> getAccessList(Long userId) {
+    public List<UserCameraAccessResponse> getAccessList(Long userId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
-        return userCameraAccessRepository.findByUser(user);
+        return userCameraAccessRepository.findByUser(user).stream()
+                .map(a -> new UserCameraAccessResponse(
+                        a.getId(),
+                        a.getUser().getId(),
+                        a.getUser().getName(),
+                        a.getUser().getEmail(),
+                        a.getCamera().getId(),
+                        a.getCamera().getName()
+                ))
+                .collect(java.util.stream.Collectors.toList());
     }
 }
