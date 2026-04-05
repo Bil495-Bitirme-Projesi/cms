@@ -5,7 +5,9 @@ import com.bitiriciler32.cms.common.exception.ResourceNotFoundException;
 import com.bitiriciler32.cms.management.dto.CreateUserRequest;
 import com.bitiriciler32.cms.management.dto.UpdateUserRequest;
 import com.bitiriciler32.cms.management.dto.UserResponse;
+import com.bitiriciler32.cms.management.entity.Role;
 import com.bitiriciler32.cms.management.entity.UserEntity;
+import com.bitiriciler32.cms.management.repository.UserCameraAccessRepository;
 import com.bitiriciler32.cms.management.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserCameraAccessRepository userCameraAccessRepository;
 
     @Transactional
     public UserResponse create(CreateUserRequest request) {
@@ -52,6 +55,11 @@ public class UserService {
             user.setEnabled(request.getEnabled());
         }
         if (request.getRole() != null) {
+            // When an OPERATOR is promoted to ADMIN, revoke all camera assignments:
+            // ADMIN users are not subject to per-camera access control.
+            if (request.getRole() == Role.ADMIN && user.getRole() != Role.ADMIN) {
+                userCameraAccessRepository.deleteAllByUser(user);
+            }
             user.setRole(request.getRole());
         }
 

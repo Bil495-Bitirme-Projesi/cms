@@ -3,6 +3,7 @@ package com.bitiriciler32.cms.management.service;
 import com.bitiriciler32.cms.common.exception.DuplicateResourceException;
 import com.bitiriciler32.cms.common.exception.ResourceNotFoundException;
 import com.bitiriciler32.cms.management.dto.UserCameraAccessResponse;
+import com.bitiriciler32.cms.management.entity.Role;
 import com.bitiriciler32.cms.management.entity.CameraEntity;
 import com.bitiriciler32.cms.management.entity.UserCameraAccessEntity;
 import com.bitiriciler32.cms.management.entity.UserEntity;
@@ -27,6 +28,12 @@ public class AccessControlService {
     public void grantAccess(Long userId, Long cameraId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+
+        if (user.getRole() == Role.ADMIN) {
+            throw new IllegalArgumentException(
+                    "Camera access assignments do not apply to ADMIN users.");
+        }
+
         CameraEntity camera = cameraRepository.findById(cameraId)
                 .orElseThrow(() -> new ResourceNotFoundException("Camera", cameraId));
 

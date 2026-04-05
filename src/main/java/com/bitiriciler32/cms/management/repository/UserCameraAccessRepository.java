@@ -21,4 +21,6 @@ public interface UserCameraAccessRepository extends JpaRepository<UserCameraAcce
     boolean existsByUserAndCamera(UserEntity user, CameraEntity camera);
 
     void deleteByUserAndCamera(UserEntity user, CameraEntity camera);
+
+    void deleteAllByUser(UserEntity user);
 }

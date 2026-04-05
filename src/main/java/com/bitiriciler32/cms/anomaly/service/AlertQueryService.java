@@ -3,7 +3,6 @@ package com.bitiriciler32.cms.anomaly.service;
 import com.bitiriciler32.cms.anomaly.dto.AlertDetailResponse;
 import com.bitiriciler32.cms.anomaly.dto.AlertQueryFilter;
 import com.bitiriciler32.cms.anomaly.dto.AlertSummaryResponse;
-import com.bitiriciler32.cms.anomaly.entity.AlertStatus;
 import com.bitiriciler32.cms.anomaly.entity.AnomalyEventEntity;
 import com.bitiriciler32.cms.anomaly.entity.UserAlertEntity;
 import com.bitiriciler32.cms.anomaly.repository.UserAlertRepository;
@@ -49,8 +48,7 @@ public class AlertQueryService {
 
             if (filter != null) {
                 if (filter.getStatus() != null) {
-                    predicates.add(cb.equal(root.get("status"),
-                            AlertStatus.valueOf(filter.getStatus())));
+                    predicates.add(cb.equal(root.get("status"), filter.getStatus()));
                 }
 
                 // Join with AnomalyEventEntity for event-level filters
@@ -88,7 +86,7 @@ public class AlertQueryService {
                 event.getType(),
                 event.getScore(),
                 event.getDescription(),
-                alert.getStatus().name()
+                alert.getStatus()
         );
     }
 
@@ -103,7 +101,7 @@ public class AlertQueryService {
                 event.getType(),
                 event.getDescription(),
                 event.getClipObjectKey(),
-                alert.getStatus().name()
+                alert.getStatus()
         );
     }
 }

@@ -1,5 +1,6 @@
 package com.bitiriciler32.cms.anomaly.dto;
 
+import com.bitiriciler32.cms.anomaly.entity.AlertStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,5 +19,5 @@ public class AlertDetailResponse {
     private String type;
     private String description;
     private String clipObjectKey;
-    private String status;
+    private AlertStatus status;
 }

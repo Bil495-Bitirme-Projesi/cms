@@ -31,9 +31,13 @@ public class AccessControlManagementController {
 
     @Operation(summary = "Grant camera access",
             description = "Grants a user access to a specific camera. "
-                    + "Once granted, the user will receive alert notifications for anomalies detected by that camera.")
+                    + "Once granted, the user will receive alert notifications for anomalies detected by that camera. "
+                    + "Returns 400 if the target user has the ADMIN role "
+                    + "(ADMIN users are not subject to per-camera access assignments).")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Access granted"),
+            @ApiResponse(responseCode = "400", description = "Target user is an ADMIN – access assignments do not apply",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "Missing or invalid token",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "Authenticated user is not an ADMIN",
