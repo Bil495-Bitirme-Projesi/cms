@@ -60,6 +60,10 @@ public class UserService {
             if (request.getRole() == Role.ADMIN && user.getRole() != Role.ADMIN) {
                 userCameraAccessRepository.deleteAllByUser(user);
             }
+            // Role change invalidates the current token – force re-login.
+            if (!request.getRole().equals(user.getRole())) {
+                user.setTokenVersion(user.getTokenVersion() + 1);
+            }
             user.setRole(request.getRole());
         }
 

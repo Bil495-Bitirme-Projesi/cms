@@ -1,5 +1,6 @@
 package com.bitiriciler32.cms.security.service;
 
+import com.bitiriciler32.cms.security.model.CmsUserDetails;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -23,6 +24,7 @@ import java.util.function.Function;
 @Service
 public class JwtTokenService {
 
+    private static final String CLAIM_TOKEN_VERSION = "tv";
     private static final String PLACEHOLDER = "CHANGE_ME";
 
     @Value("${jwt.secret}")
@@ -49,10 +51,15 @@ public class JwtTokenService {
 
     /**
      * Generate a JWT for a regular user.
+     * Embeds the user's current tokenVersion so the server can invalidate
+     * older tokens after a login, password change, or role change.
      */
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", userDetails.getAuthorities().iterator().next().getAuthority());
+        if (userDetails instanceof CmsUserDetails cmsUser) {
+            claims.put(CLAIM_TOKEN_VERSION, cmsUser.getTokenVersion());
+        }
         return buildToken(claims, userDetails.getUsername(), expirationMs);
     }
 
@@ -66,9 +73,21 @@ public class JwtTokenService {
         return buildToken(claims, subsystemId, subsystemExpirationMs);
     }
 
+    /**
+     * Validates a user token.
+     * In addition to expiry and subject checks, verifies that the tokenVersion
+     * embedded in the JWT matches the current value in the database (via UserDetails).
+     */
     public boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        if (!username.equals(userDetails.getUsername()) || isTokenExpired(token)) {
+            return false;
+        }
+        if (userDetails instanceof CmsUserDetails cmsUser) {
+            Long tokenVersion = extractTokenVersion(token);
+            return tokenVersion != null && tokenVersion == cmsUser.getTokenVersion();
+        }
+        return true;
     }
 
     /**
@@ -88,6 +107,13 @@ public class JwtTokenService {
         return extractClaim(token, Claims::getSubject);
     }
 
+    public Long extractTokenVersion(String token) {
+        return extractClaim(token, claims -> {
+            Object tv = claims.get(CLAIM_TOKEN_VERSION);
+            if (tv instanceof Number n) return n.longValue();
+            return null;
+        });
+    }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);

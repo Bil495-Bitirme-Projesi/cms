@@ -36,4 +36,12 @@ public class UserEntity {
     @Builder.Default
     @Column(nullable = false)
     private Boolean enabled = true;
+
+    /**
+     * Incremented on every login, password change, or role change.
+     * Embedded in the JWT and checked on every request – allows server-side token invalidation.
+     */
+    @Builder.Default
+    @Column(nullable = false)
+    private Long tokenVersion = 1L;
 }

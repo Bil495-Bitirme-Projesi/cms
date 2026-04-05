@@ -1,6 +1,7 @@
 package com.bitiriciler32.cms.security.service;
 
 import com.bitiriciler32.cms.management.dto.UserResponse;
+import com.bitiriciler32.cms.management.entity.UserEntity;
 import com.bitiriciler32.cms.management.repository.UserRepository;
 import com.bitiriciler32.cms.security.dto.AuthResponse;
 import com.bitiriciler32.cms.security.dto.LoginRequest;
@@ -14,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Handles user and subsystem authentication, issuing JWT tokens on success.
@@ -30,11 +32,21 @@ public class AuthService {
 
     /**
      * Authenticate a user with email + password and return a JWT.
+     * Increments tokenVersion in the database on every successful login,
+     * which invalidates any previously issued tokens on other devices.
      */
+    @Transactional
     public AuthResponse authenticate(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
+        // Increment tokenVersion to invalidate all previously issued tokens.
+        UserEntity user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + request.getEmail()));
+        user.setTokenVersion(user.getTokenVersion() + 1);
+        userRepository.save(user);
+
+        // Load fresh UserDetails (includes the new tokenVersion).
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(request.getEmail());
         String token = jwtTokenService.generateToken(userDetails);
 
