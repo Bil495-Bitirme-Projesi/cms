@@ -58,7 +58,8 @@ public class SecurityConfig {
                         // Public: login endpoints + health check
                         // /actuator/health/** covers the root endpoint and all group sub-paths
                         // (e.g. /actuator/health/readiness used by Docker healthcheck)
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/subsystem-login").permitAll()
                         .requestMatchers("/actuator/health/**").permitAll()
                         // Swagger UI + OpenAPI spec (development convenience)
                         .requestMatchers(

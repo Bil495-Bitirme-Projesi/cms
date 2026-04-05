@@ -1,5 +1,7 @@
 package com.bitiriciler32.cms.security.service;
 
+import com.bitiriciler32.cms.management.dto.UserResponse;
+import com.bitiriciler32.cms.management.repository.UserRepository;
 import com.bitiriciler32.cms.security.dto.AuthResponse;
 import com.bitiriciler32.cms.security.dto.LoginRequest;
 import com.bitiriciler32.cms.security.dto.SubsystemLoginRequest;
@@ -10,6 +12,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,6 +26,7 @@ public class AuthService {
     private final JwtTokenService jwtTokenService;
     private final CustomUserDetailsService customUserDetailsService;
     private final SubsystemCredentialRepository subsystemCredentialRepository;
+    private final UserRepository userRepository;
 
     /**
      * Authenticate a user with email + password and return a JWT.
@@ -53,5 +57,16 @@ public class AuthService {
         String token = jwtTokenService.generateSubsystemToken(credential.getSubsystemId());
 
         return new AuthResponse(token, jwtTokenService.getExpirationMs());
+    }
+
+    /**
+     * Returns the UserResponse for the currently authenticated user.
+     * userDetails.getUsername() holds the email (see CustomUserDetailsService).
+     */
+    public UserResponse getCurrentUser(UserDetails userDetails) {
+        return userRepository.findByEmail(userDetails.getUsername())
+                .map(UserResponse::fromEntity)
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "User not found: " + userDetails.getUsername()));
     }
 }
