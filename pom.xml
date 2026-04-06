@@ -91,6 +91,16 @@
             <artifactId>firebase-admin</artifactId>
             <version>${firebase-admin.version}</version>
         </dependency>
+        <!--
+            Force google-auth-library-credentials to match the version pulled by firebase-admin.
+            Without this, Maven resolves 1.23.0 (from another transitive dep) instead of 1.29.0,
+            causing ClassNotFoundException: com.google.auth.CredentialTypeForMetrics at runtime.
+        -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-credentials</artifactId>
+            <version>1.29.0</version>
+        </dependency>
 
         <!-- Lombok -->
         <dependency>

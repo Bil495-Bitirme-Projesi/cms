@@ -32,7 +32,8 @@ public class PushNotificationSender {
             String response = FirebaseMessaging.getInstance().send(message);
             log.debug("Push notification sent successfully: {}", response);
         } catch (Exception e) {
-            log.error("Failed to send push notification to token {}: {}", token, e.getMessage());
+            // Full stack trace intentionally logged here to diagnose credential / network issues
+            log.error("Failed to send push notification to token {}", token, e);
         }
     }
 }
