@@ -21,7 +21,12 @@ WORKDIR /app
 
 COPY --from=builder /app/target/*.jar app.jar
 
-EXPOSE 8080
+# Create config directory so Docker can bind-mount files into it
+# (without this, Docker auto-creates the mount point as a directory,
+#  causing "not a directory" errors when mounting a single file)
+RUN mkdir -p /app/config
+
+EXPOSE 8050
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 
