@@ -58,4 +58,12 @@ public class CameraEntity {
 
     /** When the last OFFLINE push notification was sent. Used for flapping cooldown. */
     private Instant lastOfflineNotifiedAt;
+
+    /**
+     * Soft-delete flag. When true the camera has been removed from active use.
+     * All admin/operator queries filter deleted=false; historical anomaly data is preserved.
+     */
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean deleted = false;
 }

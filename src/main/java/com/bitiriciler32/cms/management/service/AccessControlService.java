@@ -34,7 +34,7 @@ public class AccessControlService {
                     "Camera access assignments do not apply to ADMIN users.");
         }
 
-        CameraEntity camera = cameraRepository.findById(cameraId)
+        CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(cameraId)
                 .orElseThrow(() -> new ResourceNotFoundException("Camera", cameraId));
 
         if (userCameraAccessRepository.existsByUserAndCamera(user, camera)) {
@@ -54,7 +54,7 @@ public class AccessControlService {
     public void revokeAccess(Long userId, Long cameraId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
-        CameraEntity camera = cameraRepository.findById(cameraId)
+        CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(cameraId)
                 .orElseThrow(() -> new ResourceNotFoundException("Camera", cameraId));
 
         UserCameraAccessEntity access = userCameraAccessRepository

@@ -12,5 +12,5 @@ public interface DeviceFcmTokenRepository extends JpaRepository<DeviceFcmTokenEn
 
     List<DeviceFcmTokenEntity> findByUserAndEnabledTrue(UserEntity user);
 
-    List<DeviceFcmTokenEntity> findByUser(UserEntity user);
+    void deleteByUser(UserEntity user);
 }

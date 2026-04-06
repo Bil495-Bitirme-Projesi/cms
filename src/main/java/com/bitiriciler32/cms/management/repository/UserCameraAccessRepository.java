@@ -23,4 +23,6 @@ public interface UserCameraAccessRepository extends JpaRepository<UserCameraAcce
     void deleteByUserAndCamera(UserEntity user, CameraEntity camera);
 
     void deleteAllByUser(UserEntity user);
+
+    void deleteAllByCamera(CameraEntity camera);
 }

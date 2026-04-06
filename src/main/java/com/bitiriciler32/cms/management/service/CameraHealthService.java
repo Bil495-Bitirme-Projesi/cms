@@ -1,6 +1,5 @@
 package com.bitiriciler32.cms.management.service;
 
-import com.bitiriciler32.cms.common.exception.ResourceNotFoundException;
 import com.bitiriciler32.cms.management.dto.CameraStatusReport;
 import com.bitiriciler32.cms.management.entity.CameraEntity;
 import com.bitiriciler32.cms.management.entity.StreamStatus;
@@ -61,8 +60,14 @@ public class CameraHealthService {
      */
     @Transactional
     public boolean applyStatusReport(CameraStatusReport report) {
-        CameraEntity camera = cameraRepository.findById(report.getCameraId())
-                .orElseThrow(() -> new ResourceNotFoundException("Camera", report.getCameraId()));
+        CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(report.getCameraId())
+                .orElse(null);
+        if (camera == null) {
+            // Camera may have been soft-deleted after AIS received the DELETE delta.
+            // Silently discard — no action needed.
+            log.debug("Status report for unknown/deleted camera {}: ignored", report.getCameraId());
+            return false;
+        }
 
         Instant reportedAt = report.getReportedAt() != null ? report.getReportedAt() : Instant.now();
 

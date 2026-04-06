@@ -46,8 +46,8 @@ public class EventIngestService {
                     "Event with sourceEventId " + request.getSourceEventId() + " already exists");
         }
 
-        // Validate camera exists
-        CameraEntity camera = cameraRepository.findById(request.getCameraId())
+        // Validate camera exists and has not been soft-deleted
+        CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(request.getCameraId())
                 .orElseThrow(() -> new ResourceNotFoundException("Camera", request.getCameraId()));
 
         // Persist anomaly event

@@ -7,6 +7,7 @@ import com.bitiriciler32.cms.management.dto.UpdateCameraRequest;
 import com.bitiriciler32.cms.management.entity.CameraEntity;
 import com.bitiriciler32.cms.management.event.CameraConfigPublisher;
 import com.bitiriciler32.cms.management.repository.CameraRepository;
+import com.bitiriciler32.cms.management.repository.UserCameraAccessRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ public class CameraService {
 
     private final CameraRepository cameraRepository;
     private final CameraConfigPublisher cameraConfigPublisher;
+    private final UserCameraAccessRepository userCameraAccessRepository;
 
     @Transactional
     public CameraResponse create(CreateCameraRequest request) {
@@ -40,7 +42,7 @@ public class CameraService {
 
     @Transactional
     public CameraResponse update(Long id, UpdateCameraRequest request) {
-        CameraEntity camera = cameraRepository.findById(id)
+        CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Camera", id));
 
         if (request.getName() != null) {
@@ -64,27 +66,39 @@ public class CameraService {
         return toResponse(camera);
     }
 
+    /**
+     * Soft-delete a camera.
+     * Sets deleted=true instead of removing the row so that historical anomaly events
+     * and user alerts referencing this camera are preserved.
+     * Access-control mappings for this camera are hard-deleted since they have no
+     * independent historical value.
+     */
     @Transactional
     public void delete(Long id) {
-        if (!cameraRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Camera", id);
-        }
-        cameraRepository.deleteById(id);
+        CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Camera", id));
 
-        // Notify AI Inference node of deletion
+        // Revoke all per-user access mappings — no historical value once the camera is gone.
+        userCameraAccessRepository.deleteAllByCamera(camera);
+
+        // Soft delete: preserve the row so FK references in anomaly_events stay valid.
+        camera.setDeleted(true);
+        cameraRepository.save(camera);
+
+        // Notify AI Inference node — it should stop processing this camera.
         cameraConfigPublisher.publishDelete(id);
     }
 
     @Transactional(readOnly = true)
     public List<CameraResponse> findAll() {
-        return cameraRepository.findAll().stream()
+        return cameraRepository.findAllByDeletedFalse().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public CameraResponse findById(Long id) {
-        CameraEntity camera = cameraRepository.findById(id)
+        CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Camera", id));
         return toResponse(camera);
     }

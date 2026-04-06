@@ -32,7 +32,7 @@ public class ConfigSyncService {
      * Send complete configuration snapshot to a specific session.
      */
     public void sendSnapshot(String sessionId) {
-        List<CameraEntity> cameras = cameraRepository.findAll();
+        List<CameraEntity> cameras = cameraRepository.findAllByDeletedFalse();
         List<CameraConfigDto> dtos = cameras.stream()
                 .map(this::toConfigDto)
                 .collect(Collectors.toList());
@@ -60,7 +60,7 @@ public class ConfigSyncService {
             if ("DELETE".equals(event.getChangeType())) {
                 delta = new CameraDelta("DELETE", null, event.getCameraId());
             } else {
-                CameraEntity camera = cameraRepository.findById(event.getCameraId()).orElse(null);
+                CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(event.getCameraId()).orElse(null);
                 if (camera == null) {
                     log.warn("Camera {} not found for delta sync", event.getCameraId());
                     return;
