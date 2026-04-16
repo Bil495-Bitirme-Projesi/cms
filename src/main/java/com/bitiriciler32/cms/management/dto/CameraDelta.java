@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CameraDelta {
+    private String type = "CAMERA_DELTA";
     /** UPSERT or DELETE */
     private String changeType;
     private CameraConfigDto camera;

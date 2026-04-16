@@ -268,6 +268,7 @@ Sent in response to a `SNAPSHOT` request.
 
 ```json
 {
+  "type": "CONFIG_SNAPSHOT",
   "cameras": [
     {
       "cameraId": 1,
@@ -307,6 +308,7 @@ AIS does NOT need to request this — it arrives automatically.
 **UPSERT (camera added or updated):**
 ```json
 {
+  "type": "CAMERA_DELTA",
   "changeType": "UPSERT",
   "cameraId": 5,
   "camera": {
@@ -322,6 +324,7 @@ AIS does NOT need to request this — it arrives automatically.
 **DELETE (camera removed):**
 ```json
 {
+  "type": "CAMERA_DELTA",
   "changeType": "DELETE",
   "cameraId": 5,
   "camera": null

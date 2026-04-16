@@ -37,7 +37,7 @@ public class ConfigSyncService {
                 .map(this::toConfigDto)
                 .collect(Collectors.toList());
 
-        ConfigSnapshot snapshot = new ConfigSnapshot(dtos);
+        ConfigSnapshot snapshot = new ConfigSnapshot("CONFIG_SNAPSHOT", dtos);
         wsSender.send(sessionId, snapshot);
         log.info("Sent config snapshot ({} cameras) to session {}", dtos.size(), sessionId);
     }
@@ -58,14 +58,14 @@ public class ConfigSyncService {
         try {
             CameraDelta delta;
             if ("DELETE".equals(event.getChangeType())) {
-                delta = new CameraDelta("DELETE", null, event.getCameraId());
+                delta = new CameraDelta("CAMERA_DELTA", "DELETE", null, event.getCameraId());
             } else {
                 CameraEntity camera = cameraRepository.findByIdAndDeletedFalse(event.getCameraId()).orElse(null);
                 if (camera == null) {
                     log.warn("Camera {} not found for delta sync", event.getCameraId());
                     return;
                 }
-                delta = new CameraDelta("UPSERT", toConfigDto(camera), event.getCameraId());
+                delta = new CameraDelta("CAMERA_DELTA", "UPSERT", toConfigDto(camera), event.getCameraId());
             }
             wsSender.broadcast(delta);
             log.info("Broadcast camera delta: {} for cameraId={}", event.getChangeType(), event.getCameraId());
@@ -83,7 +83,7 @@ public class ConfigSyncService {
                 camera.getName(),
                 camera.getRtspUrl(),
                 camera.getDetectionEnabled(),
-                camera.getThreshold()
+                0.0  // Always return 0.0 for threshold
         );
     }
 }

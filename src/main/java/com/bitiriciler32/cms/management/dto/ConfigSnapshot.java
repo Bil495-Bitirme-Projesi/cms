@@ -10,5 +10,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConfigSnapshot {
+    private String type = "CONFIG_SNAPSHOT";
     private List<CameraConfigDto> cameras;
 }
