@@ -45,6 +45,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
+        // If another filter (e.g. SubsystemJwtFilter) already authenticated, skip
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             // No token provided — proceed as anonymous; EntryPoint handles protection
             filterChain.doFilter(request, response);

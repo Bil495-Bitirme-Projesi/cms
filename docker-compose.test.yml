@@ -1,0 +1,63 @@
+# ============================================================
+# CMS — Test Infrastructure
+# ============================================================
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d   → Start test services
+#   mvnw.cmd test                                      → Run all tests
+#   docker compose -f docker-compose.test.yml down -v  → Cleanup
+# ============================================================
+
+name: cms-test
+
+services:
+  # ── PostgreSQL for tests ──
+  postgres-test:
+    image: postgres:17-alpine
+    restart: "no"
+    environment:
+      POSTGRES_DB: cms_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data    # RAM-backed for speed, no persistence needed
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d cms_test"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  # ── MinIO for tests (optional, MinioClient is mocked in most tests) ──
+  minio-test:
+    image: minio/minio:latest
+    restart: "no"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: test
+      MINIO_ROOT_PASSWORD: testtest1
+    ports:
+      - "9100:9000"
+      - "9101:9001"
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  # ── MinIO bucket init ──
+  minio-test-init:
+    image: minio/mc:latest
+    depends_on:
+      minio-test:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio-test:9000 test testtest1 &&
+        mc mb --ignore-existing local/test-bucket &&
+        echo 'Test bucket ready.'
+      "
+

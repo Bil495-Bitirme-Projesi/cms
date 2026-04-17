@@ -1,0 +1,62 @@
+# ── Test Profile Configuration ──
+# Applied when @ActiveProfiles("test") is set.
+# DataSource URL is overridden at runtime via @DynamicPropertySource in AbstractIT.
+
+spring:
+  datasource:
+    # Connects to docker-compose.test.yml postgres-test service (port 5433)
+    url: jdbc:postgresql://localhost:5433/cms_test
+    username: test
+    password: test
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop   # fresh schema for every test run
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# ── JWT (fixed test secret — ≥ 32 bytes when decoded) ──
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLW9ubHktMzI=
+  expiration-ms: 3600000
+  subsystem-expiration-ms: 3600000
+
+# ── MinIO — real client is @MockBean'd in AbstractIT ──
+minio:
+  endpoint: http://localhost:9000
+  access-key: test
+  secret-key: test
+  bucket-name: test-bucket
+  presign-expiry-seconds: 300
+  ca-cert-path:
+
+# ── Firebase — missing file is handled gracefully (warns and skips init) ──
+firebase:
+  credentials-path: non-existent-test-firebase.json
+
+# ── Subsystem credentials ──
+subsystem:
+  id: test-subsystem
+  secret: test-subsystem-secret
+
+# ── Logging — quieter during tests ──
+logging:
+  level:
+    com.bitiriciler32.cms: INFO
+    org.springframework.security: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+
+# ── Actuator ──
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+

@@ -44,7 +44,7 @@ public class SubsystemJwtFilter extends OncePerRequestFilter {
      */
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
         String method = request.getMethod();
         return !(
                 ("POST".equalsIgnoreCase(method) && "/api/events/ingest".equals(path)) ||

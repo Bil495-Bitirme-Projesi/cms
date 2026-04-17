@@ -1,10 +1,9 @@
 package com.bitiriciler32.cms;
 
+import com.bitiriciler32.cms.support.AbstractIT;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class CmsApplicationTests {
+class CmsApplicationTests extends AbstractIT {
 
     @Test
     void contextLoads() {
