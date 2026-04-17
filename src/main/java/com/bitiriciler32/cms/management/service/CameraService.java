@@ -29,7 +29,6 @@ public class CameraService {
                 .name(request.getName())
                 .rtspUrl(request.getRtspUrl())
                 .detectionEnabled(request.getDetectionEnabled() != null ? request.getDetectionEnabled() : true)
-                .threshold(request.getThreshold())
                 .build();
 
         camera = cameraRepository.save(camera);
@@ -53,9 +52,6 @@ public class CameraService {
         }
         if (request.getDetectionEnabled() != null) {
             camera.setDetectionEnabled(request.getDetectionEnabled());
-        }
-        if (request.getThreshold() != null) {
-            camera.setThreshold(request.getThreshold());
         }
 
         camera = cameraRepository.save(camera);
@@ -109,7 +105,6 @@ public class CameraService {
                 camera.getName(),
                 camera.getRtspUrl(),
                 camera.getDetectionEnabled(),
-                camera.getThreshold(),
                 camera.getStreamStatus(),
                 camera.getLastHeartbeatAt()
         );

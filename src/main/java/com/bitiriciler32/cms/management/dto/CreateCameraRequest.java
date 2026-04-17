@@ -18,7 +18,4 @@ public class CreateCameraRequest {
     private String rtspUrl;
 
     private Boolean detectionEnabled = true;
-
-    @NotNull(message = "Threshold is required")
-    private Double threshold;
 }

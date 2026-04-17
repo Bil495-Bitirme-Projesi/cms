@@ -38,9 +38,6 @@ public class CameraEntity {
     @Column(nullable = false)
     private Boolean detectionEnabled = true;
 
-    @Builder.Default
-    @Column(nullable = false)
-    private Double threshold = 0.5;
 
     // ── Health fields (set by AI node, not by admin) ──
 

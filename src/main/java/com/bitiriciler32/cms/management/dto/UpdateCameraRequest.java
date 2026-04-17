@@ -11,5 +11,4 @@ public class UpdateCameraRequest {
     private String name;
     private String rtspUrl;
     private Boolean detectionEnabled;
-    private Double threshold;
 }

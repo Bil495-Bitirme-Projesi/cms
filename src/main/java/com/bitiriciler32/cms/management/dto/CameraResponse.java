@@ -16,7 +16,6 @@ public class CameraResponse {
     private String name;
     private String rtspUrl;
     private Boolean detectionEnabled;
-    private Double threshold;
     private StreamStatus streamStatus;
     private Instant lastHeartbeatAt;
 
@@ -26,7 +25,6 @@ public class CameraResponse {
                 entity.getName(),
                 entity.getRtspUrl(),
                 entity.getDetectionEnabled(),
-                entity.getThreshold(),
                 entity.getStreamStatus(),
                 entity.getLastHeartbeatAt()
         );
