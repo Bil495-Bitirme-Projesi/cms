@@ -27,7 +27,6 @@ public class AlertCommandService {
         for (UserEntity user : recipients) {
             UserAlertEntity alert = UserAlertEntity.builder()
                     .status(AlertStatus.UNSEEN)
-                    .falsePositive(false)
                     .user(user)
                     .event(event)
                     .build();
@@ -36,34 +35,12 @@ public class AlertCommandService {
     }
 
     @Transactional
-    public void markRead(Long alertId, UserEntity user) {
-        UserAlertEntity alert = userAlertRepository.findByIdAndUser(alertId, user)
-                .orElseThrow(() -> new ResourceNotFoundException("Alert", alertId));
-
-        alert.setStatus(AlertStatus.READ);
-        alert.setReadAt(Instant.now());
-        userAlertRepository.save(alert);
-    }
-
-    @Transactional
-    public void acknowledge(Long alertId, UserEntity user, String note) {
+    public void acknowledge(Long alertId, UserEntity user) {
         UserAlertEntity alert = userAlertRepository.findByIdAndUser(alertId, user)
                 .orElseThrow(() -> new ResourceNotFoundException("Alert", alertId));
 
         alert.setStatus(AlertStatus.ACKNOWLEDGED);
-        alert.setAckAt(Instant.now());
-        alert.setNote(note);
-        userAlertRepository.save(alert);
-    }
-
-    @Transactional
-    public void flagFalsePositive(Long alertId, UserEntity user, String note) {
-        UserAlertEntity alert = userAlertRepository.findByIdAndUser(alertId, user)
-                .orElseThrow(() -> new ResourceNotFoundException("Alert", alertId));
-
-        alert.setStatus(AlertStatus.FALSE_POSITIVE);
-        alert.setFalsePositive(true);
-        alert.setNote(note);
+        alert.setAcknowledgedAt(Instant.now());
         userAlertRepository.save(alert);
     }
 }

@@ -61,7 +61,7 @@ class NotificationServiceTest {
     }
 
     private UserAlertEntity alert(UserEntity user, AnomalyEventEntity event) {
-        return UserAlertEntity.builder().id(1L).user(user).event(event).falsePositive(false).build();
+        return UserAlertEntity.builder().id(1L).user(user).event(event).build();
     }
 
     private DeviceFcmTokenEntity token(UserEntity user, String fcm) {

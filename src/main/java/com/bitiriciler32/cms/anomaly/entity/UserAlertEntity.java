@@ -31,15 +31,7 @@ public class UserAlertEntity {
     @Column(nullable = false)
     private AlertStatus status = AlertStatus.UNSEEN;
 
-    private Instant readAt;
-
-    private Instant ackAt;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private Boolean falsePositive = false;
-
-    private String note;
+    private Instant acknowledgedAt;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;

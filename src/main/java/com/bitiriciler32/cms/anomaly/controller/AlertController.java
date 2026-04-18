@@ -38,32 +38,12 @@ public class AlertController {
         return ResponseEntity.ok(alertQueryService.getAlertDetail(alertId, user));
     }
 
-    @PatchMapping("/{alertId}/read")
-    public ResponseEntity<Void> markRead(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long alertId) {
-        UserEntity user = resolveUser(userDetails);
-        alertCommandService.markRead(alertId, user);
-        return ResponseEntity.ok().build();
-    }
-
     @PatchMapping("/{alertId}/acknowledge")
     public ResponseEntity<Void> acknowledge(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long alertId,
-            @RequestBody AcknowledgeRequest request) {
+            @PathVariable Long alertId) {
         UserEntity user = resolveUser(userDetails);
-        alertCommandService.acknowledge(alertId, user, request.getNote());
-        return ResponseEntity.ok().build();
-    }
-
-    @PatchMapping("/{alertId}/false-positive")
-    public ResponseEntity<Void> flagFalsePositive(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long alertId,
-            @RequestBody FalsePositiveRequest request) {
-        UserEntity user = resolveUser(userDetails);
-        alertCommandService.flagFalsePositive(alertId, user, request.getNote());
+        alertCommandService.acknowledge(alertId, user);
         return ResponseEntity.ok().build();
     }
 

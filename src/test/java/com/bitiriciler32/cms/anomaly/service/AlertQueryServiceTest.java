@@ -58,7 +58,7 @@ class AlertQueryServiceTest {
 
     private UserAlertEntity alert(Long id, AlertStatus status) {
         return UserAlertEntity.builder()
-                .id(id).status(status).falsePositive(false)
+                .id(id).status(status)
                 .user(user()).event(event()).build();
     }
 
@@ -72,7 +72,7 @@ class AlertQueryServiceTest {
         @DisplayName("(1) null filter - returns all alerts for user")
         void getAlerts_nullFilter_returnsAll() {
             when(userAlertRepository.findAll(any(Specification.class)))
-                    .thenReturn(List.of(alert(1L, AlertStatus.UNSEEN), alert(2L, AlertStatus.READ)));
+                    .thenReturn(List.of(alert(1L, AlertStatus.UNSEEN), alert(2L, AlertStatus.ACKNOWLEDGED)));
 
             List<AlertSummaryResponse> result = alertQueryService.getAlerts(user(), null);
 
@@ -157,10 +157,10 @@ class AlertQueryServiceTest {
         @DisplayName("(8) filter with multiple criteria - applies all filters")
         void getAlerts_multipleFilters_appliesAll() {
             when(userAlertRepository.findAll(any(Specification.class)))
-                    .thenReturn(List.of(alert(1L, AlertStatus.READ)));
+                    .thenReturn(List.of(alert(1L, AlertStatus.ACKNOWLEDGED)));
 
             AlertQueryFilter filter = new AlertQueryFilter(
-                    AlertStatus.READ, 1L, Instant.now().minusSeconds(3600), Instant.now(), "INTRUSION");
+                    AlertStatus.ACKNOWLEDGED, 1L, Instant.now().minusSeconds(3600), Instant.now(), "INTRUSION");
             List<AlertSummaryResponse> result = alertQueryService.getAlerts(user(), filter);
 
             assertThat(result).hasSize(1);

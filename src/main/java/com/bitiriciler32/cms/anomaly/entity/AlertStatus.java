@@ -5,7 +5,5 @@ package com.bitiriciler32.cms.anomaly.entity;
  */
 public enum AlertStatus {
     UNSEEN,
-    READ,
-    ACKNOWLEDGED,
-    FALSE_POSITIVE
+    ACKNOWLEDGED
 }
