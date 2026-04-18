@@ -13,6 +13,9 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 5000   # max wait for a connection from pool (ms); default 30s
+      validation-timeout: 3000   # max time to validate an existing connection (ms)
 
   jpa:
     hibernate:
