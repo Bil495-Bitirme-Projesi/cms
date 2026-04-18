@@ -11,6 +11,7 @@ import java.io.FileInputStream;
 import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+import java.util.concurrent.TimeUnit;
 @Configuration
 public class MinioConfig {
     @Value("${minio.endpoint}")
@@ -33,8 +34,21 @@ public class MinioConfig {
                 .credentials(accessKey, secretKey);
         if (caCertPath != null && !caCertPath.isBlank()) {
             builder.httpClient(buildTrustedHttpClient(caCertPath));
+        } else {
+            builder.httpClient(buildDefaultHttpClient());
         }
         return builder.build();
+    }
+    /**
+     * Default OkHttpClient with explicit timeouts.
+     * Used when MinIO is accessed over plain HTTP or CA-signed TLS.
+     */
+    private OkHttpClient buildDefaultHttpClient() {
+        return new OkHttpClient.Builder()
+                .connectTimeout(5, TimeUnit.SECONDS)
+                .readTimeout(5, TimeUnit.SECONDS)
+                .writeTimeout(5, TimeUnit.SECONDS)
+                .build();
     }
     /**
      * Builds an OkHttpClient that trusts the certificate loaded from the given PEM file.
@@ -59,6 +73,9 @@ public class MinioConfig {
             X509TrustManager trustManager =
                     (X509TrustManager) tmf.getTrustManagers()[0];
             return new OkHttpClient.Builder()
+                    .connectTimeout(5, TimeUnit.SECONDS)
+                    .readTimeout(5, TimeUnit.SECONDS)
+                    .writeTimeout(5, TimeUnit.SECONDS)
                     .sslSocketFactory(sslContext.getSocketFactory(), trustManager)
                     .build();
         } catch (Exception e) {
