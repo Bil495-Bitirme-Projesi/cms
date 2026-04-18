@@ -14,6 +14,7 @@ public class AlertDetailResponse {
     private Long id;
     private Long eventId;
     private Long cameraId;
+    private String cameraName;
     private Instant timestamp;
     private Double score;
     private String type;
