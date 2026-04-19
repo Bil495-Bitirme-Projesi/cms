@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -79,7 +80,15 @@ public class DeviceTokenController {
                 .enabled(true)
                 .build();
 
-        deviceFcmTokenRepository.save(token);
+        try {
+            // saveAndFlush forces the INSERT to execute immediately so that any unique-constraint
+            // violation (race condition: two simultaneous registrations for the same user) is
+            // thrown here inside the try block rather than at commit time.
+            deviceFcmTokenRepository.saveAndFlush(token);
+        } catch (DataIntegrityViolationException ignored) {
+            // Race condition: another concurrent request already inserted a token for this user.
+            // The token is effectively registered, so 201 is still the correct response.
+        }
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

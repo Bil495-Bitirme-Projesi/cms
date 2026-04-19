@@ -12,7 +12,7 @@ import java.time.Instant;
  * Stores Firebase Cloud Messaging device tokens registered by mobile clients.
  */
 @Entity
-@Table(name = "device_fcm_tokens")
+@Table(name = "device_fcm_tokens", uniqueConstraints = @UniqueConstraint(name = "uq_device_fcm_tokens_user", columnNames = "user_id"))
 @Getter
 @Setter
 @NoArgsConstructor
